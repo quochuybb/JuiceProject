@@ -1,9 +1,11 @@
+using System;
 using DG.Tweening;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class MainMenuManager : MonoBehaviour
 {
+    public static MainMenuManager Instance { get; private set; }
     [SerializeField] private float transitionDuration = 0.5f;
     [SerializeField] private Ease easeType = Ease.OutExpo;
     private Vector2 centerPosition = Vector2.zero;
@@ -11,12 +13,25 @@ public class MainMenuManager : MonoBehaviour
     private Vector2 rightOffScreen = new Vector2(1920f, 0f);
     [SerializeField] private RectTransform mainMenuPanel;
     [SerializeField] private RectTransform campaignPanel;
-    
-    public void OnPlayCampaignButton()
+    [SerializeField] private RectTransform mapPanel;
+
+    private void Awake()
+    {
+        Instance = this;
+    }
+    public void OnPlayChapterButton()
     {
         if (SoundManager.Instance != null)
             SoundManager.Instance.PlayUIClick();
         Debug.Log("Open Chapter");
+        SlidePanel(campaignPanel, mapPanel);
+    }
+
+    public void OnPlayCampaignButton()
+    {
+        if (SoundManager.Instance != null)
+            SoundManager.Instance.PlayUIClick();
+        Debug.Log("Open Campaign");
         SlidePanel(mainMenuPanel, campaignPanel);
     }
 

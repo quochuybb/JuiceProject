@@ -147,6 +147,7 @@ GameObject:
   - component: {fileID: 3089871442126864555}
   - component: {fileID: 8659843411197418956}
   - component: {fileID: 9169495314639674867}
+  - component: {fileID: 5631467876569279163}
   m_Layer: 5
   m_Name: Chapter
   m_TagString: Untagged
@@ -161,7 +162,7 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2421406332240051797}
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -257,3 +258,16 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &5631467876569279163
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2421406332240051797}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c5a18de22ab64274a55adf911fab05e2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  chapterData: {fileID: 11400000, guid: 0ebc5e32cd0776b4a816c94136ed67b9, type: 2}

@@ -4,12 +4,17 @@ using UnityEngine.UI;
 using Core.Gem;
 using TMPro;
 using UnityEngine.SceneManagement;
-
+public enum GameModeType
+{
+    GemMission,    
+    TargetScore,    
+    RecipeCrafting,
+}
 public class BoardManager : MonoBehaviour
 {
     private const int COLUMNS = 9;
     private const int TOTAL_CELLS_TO_SPAWN = 90;
-
+    public GameModeType currentGameMode;
     [SerializeField] private GemManager gemManager;
     [SerializeField] private TextMeshProUGUI stageText;
     [SerializeField] private GameObject cellPrefab;
@@ -17,8 +22,10 @@ public class BoardManager : MonoBehaviour
     [SerializeField] private GameObject winPanel;
     [SerializeField] private GameObject losePanel;
     [SerializeField] private Button addNumberButton;
+    [SerializeField] private int currentScore;
+    [SerializeField] private int targetScore;
+    [SerializeField] private TextMeshProUGUI scoreText;
     public Sprite[] numberSprites;
-
 
     [SerializeField] private int stage = 1;
     [SerializeField] private int level = 1;
@@ -28,7 +35,17 @@ public class BoardManager : MonoBehaviour
     private CellUI selectedCellUI;
 
     private List<CellData> dataList;
+    public static BoardManager Instance { get; private set; }
 
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+    }
     private void Start()
     {
         countAdd = 5;
@@ -36,21 +53,31 @@ public class BoardManager : MonoBehaviour
         if (winPanel != null) winPanel.SetActive(false);
         if (losePanel != null) losePanel.SetActive(false);
 
-        GenerateStage(stage, false);
+        GenerateStage(stage, GameModeType.GemMission, 0, false);
+        
     }
-    public void GenerateStage(int currentStage, bool keepMissions = false)
+    public void GenerateStage(int currentStage, GameModeType mode, int targetScoreForMode = 0, bool keepMissions = false)
     {
+        if (mode != GameModeType.TargetScore)
+        {
+            scoreText.gameObject.SetActive(false);
+        }
+        currentGameMode = mode;
+        currentScore = 0;
+        targetScore = targetScoreForMode;
+        
+        if (scoreText != null) scoreText.text = "0 / " + targetScore.ToString();
+
         dataList = BoardGenerator.GenerateInitialBoard(currentStage, COLUMNS);
 
-        if (!keepMissions)
+        if (currentGameMode == GameModeType.GemMission)
         {
-            gemManager.GenerateMission(level);
+            if (!keepMissions) gemManager.GenerateMission(level);
+            gemManager.AssignGemsToBoard(dataList, 0, dataList.Count);
         }
 
-        gemManager.AssignGemsToBoard(dataList, 0, dataList.Count);
-
         GenerateBoardEmpty(TOTAL_CELLS_TO_SPAWN);
-        ImplementNumberToCell(dataList,0);
+        ImplementNumberToCell(dataList, 0);
     }
 
     public void GenerateBoardEmpty(int totalCellToSpawn)
@@ -211,13 +238,20 @@ public class BoardManager : MonoBehaviour
 
     private void HandleMatchSuccess(CellUI cell1, CellUI cell2)
     {
-        if (cell1.cell.hasGem)
+        switch (currentGameMode)
         {
-            gemManager.CollectGem(cell1.cell.gemType);
-        }
-        if (cell2.cell.hasGem)
-        {
-            gemManager.CollectGem(cell2.cell.gemType);
+            case GameModeType.GemMission:
+                if (cell1.cell.hasGem) gemManager.CollectGem(cell1.cell.gemType);
+                if (cell2.cell.hasGem) gemManager.CollectGem(cell2.cell.gemType);
+                break;
+
+            case GameModeType.TargetScore:
+                int matchScore = (cell1.cell.value + cell2.cell.value) * 10;
+                AddScore(matchScore);
+                break;
+
+            case GameModeType.RecipeCrafting:
+                break;
         }
 
         cell1.cell.isCleared = true;
@@ -232,6 +266,11 @@ public class BoardManager : MonoBehaviour
         cell2.OnMatchSuccess();
 
         Invoke(nameof(CheckAndClearEmptyRows), 0.5f);
+    }
+    private void AddScore(int amount)
+    {
+        currentScore += amount;
+        if (scoreText != null) scoreText.text = currentScore.ToString() + " / " + targetScore.ToString();
     }
     private void HandleBlockedMatch(CellUI cell1, CellUI cell2)
     {
@@ -343,12 +382,15 @@ public class BoardManager : MonoBehaviour
             return;
         }
 
-        CleanBoard();
-
+        if (CleanBoard())
+        {
+            return;
+        }
         if (countAdd == 0 && !HasAnyValidMatch())
         {
             HandleGameOver();
         }
+        CheckWinCondition();
     }
     public void GoHome()
     {
@@ -505,31 +547,27 @@ public class BoardManager : MonoBehaviour
         }
     }
 
-    private void CleanBoard()
+    private bool CleanBoard()
     {
         foreach (CellData cell in dataList)
         {
-            if (cell.value != 0)
-            {
-                return; 
-            }
+            if (cell.value != 0) return false; 
         }
 
         stage++;
-        stageText.text = "Stage: " + stage.ToString();
+        if (stageText != null) stageText.text = "Stage: " + stage.ToString();
+    
         countAdd = 5;
         Transform number = addNumberButton.transform.Find("IconNumber/Number");
         if (number != null)
         {
             TextMeshProUGUI numberText = number.GetComponentInChildren<TextMeshProUGUI>();
-            if (numberText != null)
-            {
-                numberText.text = countAdd.ToString();
-            }
+            if (numberText != null) numberText.text = countAdd.ToString();
         }
-        GenerateStage(stage, true);
+    
+        GenerateStage(stage, currentGameMode, targetScore, true);    
+        return true; 
     }
-
 
     private void HandleGameOver()
     {
@@ -576,39 +614,66 @@ public class BoardManager : MonoBehaviour
         if (winPanel != null) winPanel.SetActive(false);
         if (losePanel != null) losePanel.SetActive(false);
 
-        GenerateStage(stage, false);
+        GenerateStage(stage, GameModeType.GemMission, 0, false);
     }
 
     public void NextLevel()
     {
         if (SoundManager.Instance != null)
             SoundManager.Instance.PlayUIClick();
+        Debug.Log("Win back to map chapter");
+        // level++;
+        //
+        // stage = 1;
+        // if (stageText != null) stageText.text = "Stage: " + stage.ToString();
+        //
+        // countAdd = 5;
+        //
+        // Transform number = addNumberButton.transform.Find("IconNumber/Number");
+        // if (number != null)
+        // {
+        //     TextMeshProUGUI numberText = number.GetComponentInChildren<TextMeshProUGUI>();
+        //     if (numberText != null)
+        //     {
+        //         numberText.text = countAdd.ToString();
+        //     }
+        // }
+        //
+        // if (selectedCellUI != null)
+        // {
+        //     selectedCellUI = null;
+        // }
+        //
+        // if (winPanel != null) winPanel.SetActive(false);
+        // if (losePanel != null) losePanel.SetActive(false);
+        //
+        // GenerateStage(stage, false);
+    }
+    private void CheckWinCondition()
+    {
+        bool isWin = false;
 
-        level++;
-
-        stage = 1;
-        if (stageText != null) stageText.text = "Stage: " + stage.ToString();
-
-        countAdd = 5;
-        
-        Transform number = addNumberButton.transform.Find("IconNumber/Number");
-        if (number != null)
+        switch (currentGameMode)
         {
-            TextMeshProUGUI numberText = number.GetComponentInChildren<TextMeshProUGUI>();
-            if (numberText != null)
-            {
-                numberText.text = countAdd.ToString();
-            }
+            case GameModeType.GemMission:
+                isWin = gemManager.AreAllMissionsCompleted();
+                break;
+
+            case GameModeType.TargetScore:
+                isWin = (currentScore >= targetScore);
+                break;
+
+            case GameModeType.RecipeCrafting:
+                break;
         }
-        
-        if (selectedCellUI != null)
+
+        if (isWin)
         {
-            selectedCellUI = null;
+            HandleGameWin();
         }
-
-        if (winPanel != null) winPanel.SetActive(false);
-        if (losePanel != null) losePanel.SetActive(false);
-
-        GenerateStage(stage, false);
+        else if (countAdd == 0 && !HasAnyValidMatch())
+        {
+            HandleGameOver();
+        }
     }
 }

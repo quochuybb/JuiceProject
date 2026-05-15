@@ -1,53 +1,81 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 using Random = System.Random;
-
 
 public class MapManager : MonoBehaviour
 {
     public static MapManager Instance { get; private set; }
+
+    [Header("UI References")]
     [SerializeField] private GameObject nodePrefab;
-    [SerializeField] private ChapterData chapterData;
     [SerializeField] private Transform mapContainerTransform;
-    private int seed;
+
+    [Header("Runtime Data")]
+    [SerializeField] private ChapterData currentChapterData;
+    private int currentSeed;
     private Random mapRNG;
+    [SerializeField] private RectTransform contentRectTransform;
     private void Awake()
     {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
         Instance = this;
     }
 
-    public void GenerateSeed(ChapterData chapter)
+    public void StartChapterMap(ChapterData chapter)
     {
-        chapterData = chapter;
-        seed = chapter.chapterID.GetHashCode() + UnityEngine.Random.Range(0, 1000);
+        MainMenuManager.Instance.OnPlayChapterButton();
+        currentChapterData = chapter;
+        currentSeed = chapter.chapterID.GetHashCode() + UnityEngine.Random.Range(0, 1000);
+        
         GenerateMapGraph();
     }
 
-    void GenerateMapGraph()
+    private void GenerateMapGraph()
     {
-        mapRNG = new Random(seed);
+        mapRNG = new Random(currentSeed);
+        
         List<List<MapNodeData>> logicMap = CreateLogicMapData(); 
 
         for (int i = 0; i < logicMap.Count - 1; i++)
         {
-            ConnectLayers(logicMap[i], logicMap[i+1], mapRNG);
+            ConnectLayers(logicMap[i], logicMap[i + 1], mapRNG);
         }
 
         DrawMapToScreen(logicMap);
     }
 
-    void DrawMapToScreen(List<List<MapNodeData>> logicMap)
+    private void DrawMapToScreen(List<List<MapNodeData>> logicMap)
     {
-        foreach (var layer in logicMap)
+        float layerSpacing = 250f; 
+        float nodeSpacing = 200f;  
+        float topPadding = 150f;   
+        float bottomPadding = 300f;
+
+        float totalHeight = ((logicMap.Count - 1) * layerSpacing) + topPadding + bottomPadding;
+    
+        contentRectTransform.sizeDelta = new Vector2(contentRectTransform.sizeDelta.x, totalHeight);
+
+        for (int currentLayerIndex = 0; currentLayerIndex < logicMap.Count; currentLayerIndex++)
         {
-            foreach (var nodeData in layer)
+            List<MapNodeData> currentLayerNodes = logicMap[currentLayerIndex];
+            int totalNodesInLayer = currentLayerNodes.Count;
+
+            foreach (var nodeData in currentLayerNodes)
             {
                 GameObject newButtonGO = Instantiate(nodePrefab, mapContainerTransform);
-            
                 NodeUIButton uiScript = newButtonGO.GetComponent<NodeUIButton>();
                 uiScript.Setup(nodeData);
 
+                float posY = -(currentLayerIndex * layerSpacing) - topPadding; 
+                float posX = (nodeData.nodeIndexInLayer - (totalNodesInLayer - 1) / 2.0f) * nodeSpacing;
+
+                RectTransform rect = newButtonGO.GetComponent<RectTransform>();
+                rect.anchoredPosition = new Vector2(posX, posY);
             }
         }
     }
@@ -55,15 +83,14 @@ public class MapManager : MonoBehaviour
     private List<List<MapNodeData>> CreateLogicMapData()
     {
         List<List<MapNodeData>> logicMap = new List<List<MapNodeData>>();
-        
         int globalNodeCounter = 0; 
-        for (int colIndex = 0; colIndex < chapterData.layers.Count; colIndex++)
+        
+        for (int layerIndex = 0; layerIndex < currentChapterData.layers.Count; layerIndex++)
         {
-            LayerConfig layerConfig = chapterData.layers[colIndex];
-            
-            List<MapNodeData> currentColumnNodes = new List<MapNodeData>();
+            LayerConfig layerConfig = currentChapterData.layers[layerIndex];
+            List<MapNodeData> nodesInCurrentLayer = new List<MapNodeData>();
 
-            int nodeCountInThisColumn = mapRNG.Next(layerConfig.minNodes, layerConfig.maxNodes + 1);
+            int nodeCountInThisLayer = mapRNG.Next(layerConfig.minNodes, layerConfig.maxNodes + 1);
 
             List<NodeType> availableTypes = new List<NodeType>();
             List<float> weights = new List<float>();
@@ -73,28 +100,29 @@ public class MapManager : MonoBehaviour
                 weights.Add(weightConfig.weightRatio);
             }
 
-            for (int rowIndex = 0; rowIndex < nodeCountInThisColumn; rowIndex++)
+            for (int nodeIndex = 0; nodeIndex < nodeCountInThisLayer; nodeIndex++)
             {
                 NodeType selectedType = GetRandomWeighted(availableTypes, weights, mapRNG);
 
                 MapNodeData newNode = new MapNodeData
                 {
-                    nodeID = $"Node_{colIndex}_{globalNodeCounter}", 
+                    nodeID = $"Node_{layerIndex}_{globalNodeCounter}", 
                     type = selectedType,
-                    layerIndex = colIndex,  
-                    rowIndex = rowIndex     
+                    layerIndex = layerIndex,  
+                    nodeIndexInLayer = nodeIndex 
                 };
 
-                currentColumnNodes.Add(newNode);
+                nodesInCurrentLayer.Add(newNode);
                 globalNodeCounter++;
             }
 
-            logicMap.Add(currentColumnNodes);
+            logicMap.Add(nodesInCurrentLayer);
         }
 
         return logicMap;
     }
-    public T GetRandomWeighted<T>(List<T> items, List<float> weights, System.Random rng)
+
+    private T GetRandomWeighted<T>(List<T> items, List<float> weights, Random rng)
     {
         float totalWeight = 0f;
         foreach (float weight in weights)
@@ -115,25 +143,24 @@ public class MapManager : MonoBehaviour
         }
         return items[items.Count - 1]; 
     }
-    void ConnectLayers(List<MapNodeData> layerA, List<MapNodeData> layerB, System.Random rng)
+
+    private void ConnectLayers(List<MapNodeData> upperLayer, List<MapNodeData> lowerLayer, Random rng)
     {
-        foreach (MapNodeData nodeA in layerA)
+        foreach (MapNodeData upperNode in upperLayer)
         {
-            MapNodeData randomNodeB = layerB[rng.Next(layerB.Count)];
-            nodeA.AddOutgoingEdge(randomNodeB);
-            randomNodeB.AddIncomingEdge(nodeA);
+            MapNodeData randomLowerNode = lowerLayer[rng.Next(lowerLayer.Count)];
+            upperNode.AddOutgoingEdge(randomLowerNode);
+            randomLowerNode.AddIncomingEdge(upperNode);
         }
 
-        foreach (MapNodeData nodeB in layerB)
+        foreach (MapNodeData lowerNode in lowerLayer)
         {
-            if (nodeB.incomingEdges.Count == 0) 
+            if (lowerNode.incomingEdges.Count == 0) 
             {
-                MapNodeData randomNodeA = layerA[rng.Next(layerA.Count)];
-                randomNodeA.AddOutgoingEdge(nodeB);
-                nodeB.AddIncomingEdge(randomNodeA);
+                MapNodeData randomUpperNode = upperLayer[rng.Next(upperLayer.Count)];
+                randomUpperNode.AddOutgoingEdge(lowerNode);
+                lowerNode.AddIncomingEdge(randomUpperNode);
             }
         }
-    
     }
-    
 }

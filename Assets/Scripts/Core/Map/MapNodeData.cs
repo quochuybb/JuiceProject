@@ -6,7 +6,9 @@ public class MapNodeData
     public NodeType type; 
     
     public int layerIndex;
-    public int rowIndex;
+    public int nodeIndexInLayer;
+    public GameModeType gameMode;
+    public int targetScore;
 
     public List<MapNodeData> incomingEdges = new List<MapNodeData>();
     public List<MapNodeData> outgoingEdges = new List<MapNodeData>();
