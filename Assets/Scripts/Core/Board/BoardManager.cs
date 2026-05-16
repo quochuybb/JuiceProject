@@ -22,13 +22,12 @@ public class BoardManager : MonoBehaviour
     [SerializeField] private GameObject winPanel;
     [SerializeField] private GameObject losePanel;
     [SerializeField] private Button addNumberButton;
-    [SerializeField] private int currentScore;
-    [SerializeField] private int targetScore;
+    [SerializeField] private float currentScore;
+    [SerializeField] private float targetScore;
     [SerializeField] private TextMeshProUGUI scoreText;
     public Sprite[] numberSprites;
 
     [SerializeField] private int stage = 1;
-    [SerializeField] private int level = 1;
 
     [SerializeField] private int countAdd;
 
@@ -49,14 +48,17 @@ public class BoardManager : MonoBehaviour
     private void Start()
     {
         countAdd = 5;
-
         if (winPanel != null) winPanel.SetActive(false);
         if (losePanel != null) losePanel.SetActive(false);
 
-        GenerateStage(stage, GameModeType.GemMission, 0, false);
-        
+        GenerateStage(
+            GameSession.CurrentLayer, 
+            GameSession.SelectedMode, 
+            GameSession.TargetScore, 
+            false
+        );
     }
-    public void GenerateStage(int currentStage, GameModeType mode, int targetScoreForMode = 0, bool keepMissions = false)
+    public void GenerateStage(int currentStage, GameModeType mode, float targetScoreForMode = 0, bool keepMissions = false)
     {
         if (mode != GameModeType.TargetScore)
         {
@@ -72,7 +74,7 @@ public class BoardManager : MonoBehaviour
 
         if (currentGameMode == GameModeType.GemMission)
         {
-            if (!keepMissions) gemManager.GenerateMission(level);
+            if (!keepMissions) gemManager.GenerateMission();
             gemManager.AssignGemsToBoard(dataList, 0, dataList.Count);
         }
 

@@ -3,12 +3,13 @@
 public class MapNodeData 
 {
     public string nodeID;
-    public NodeType type; 
-    
+    public NodeType type;
+
+    public int chapterIndex;
     public int layerIndex;
     public int nodeIndexInLayer;
     public GameModeType gameMode;
-    public int targetScore;
+    public float targetScore;
 
     public List<MapNodeData> incomingEdges = new List<MapNodeData>();
     public List<MapNodeData> outgoingEdges = new List<MapNodeData>();

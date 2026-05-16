@@ -26,7 +26,17 @@ public class NodeUIButton : MonoBehaviour
 
     public void OnClick()
     {
-        Debug.Log("OnClick");
+        GameSession.CurrentLayer =  myData.layerIndex;
+        GameSession.CurrentChapter = myData.chapterIndex;
+        GameSession.SelectedMode = myData.gameMode;
+        GameSession.TargetScore = myData.targetScore;
+        if (myData.type == NodeType.Hard)
+        {
+            GameSession.TargetScore = myData.targetScore + myData.targetScore*0.2f;
+        }
+        GameSession.CurrentNodeID = myData.nodeID;
+        GameSession.type = myData.type;
+        Debug.Log(myData.gameMode);
         SceneManager.LoadScene("Game");
     }
     public void Setup(MapNodeData data)

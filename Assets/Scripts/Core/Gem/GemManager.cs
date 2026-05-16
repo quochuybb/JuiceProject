@@ -31,7 +31,7 @@ namespace Core.Gem
             return null;
         }
 
-        public void GenerateMission(int currentLevel)
+        public void GenerateMission()
         {
             missionCollectGems.Clear();
 
@@ -47,8 +47,17 @@ namespace Core.Gem
             {
                 int randomGemType = Random.Range(0, gemTypes.Count);
                 GemType gemType = gemTypes[randomGemType];
-                int baseAmount = 3 + currentLevel;
-                int maxAmount = 4 + currentLevel;
+                int baseAmount = GameSession.CurrentChapter + GameSession.CurrentLayer;
+                int maxAmount = GameSession.CurrentChapter + GameSession.CurrentLayer + 1;
+                if (GameSession.type == NodeType.Hard)
+                {
+                    float bonusCalculation = GameSession.CurrentChapter * 0.4f;
+
+                    int roundedBonus = Mathf.RoundToInt(bonusCalculation);
+
+                    baseAmount += roundedBonus;
+                    maxAmount += roundedBonus; 
+                }
 
                 MissionCollectGem mission = new MissionCollectGem
                 {

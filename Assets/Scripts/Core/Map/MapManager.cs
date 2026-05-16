@@ -85,6 +85,20 @@ public class MapManager : MonoBehaviour
         List<List<MapNodeData>> logicMap = new List<List<MapNodeData>>();
         int globalNodeCounter = 0; 
         
+        int chapterNumber = 1;
+        if (!int.TryParse(currentChapterData.chapterID, out chapterNumber))
+        {
+            Debug.LogWarning($"Chapter ID '{currentChapterData.chapterID}' invalid number, default use 1");
+        }
+
+        List<GameModeType> availableGameModes = new List<GameModeType> 
+        { 
+            GameModeType.TargetScore, 
+            GameModeType.GemMission, 
+            GameModeType.RecipeCrafting 
+        };
+        List<float> gameModeWeights = new List<float> { 0.6f, 0.2f, 0.2f };
+        
         for (int layerIndex = 0; layerIndex < currentChapterData.layers.Count; layerIndex++)
         {
             LayerConfig layerConfig = currentChapterData.layers[layerIndex];
@@ -103,13 +117,23 @@ public class MapManager : MonoBehaviour
             for (int nodeIndex = 0; nodeIndex < nodeCountInThisLayer; nodeIndex++)
             {
                 NodeType selectedType = GetRandomWeighted(availableTypes, weights, mapRNG);
+                GameModeType selectedMode = GetRandomWeighted(availableGameModes, gameModeWeights, mapRNG);
+                
+                int calculatedScore = 0;
+                if (selectedMode == GameModeType.TargetScore)
+                {
+                    calculatedScore = (chapterNumber * 100) + (layerIndex * 10);
+                }
 
                 MapNodeData newNode = new MapNodeData
                 {
                     nodeID = $"Node_{layerIndex}_{globalNodeCounter}", 
                     type = selectedType,
                     layerIndex = layerIndex,  
-                    nodeIndexInLayer = nodeIndex 
+                    nodeIndexInLayer = nodeIndex,
+                    gameMode = selectedMode,
+                    targetScore = calculatedScore,
+                    chapterIndex = chapterNumber
                 };
 
                 nodesInCurrentLayer.Add(newNode);
@@ -121,7 +145,6 @@ public class MapManager : MonoBehaviour
 
         return logicMap;
     }
-
     private T GetRandomWeighted<T>(List<T> items, List<float> weights, Random rng)
     {
         float totalWeight = 0f;
