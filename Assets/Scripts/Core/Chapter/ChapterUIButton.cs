@@ -25,7 +25,6 @@ public class ChapterUIButton : MonoBehaviour
         {
             MapManager.Instance.StartChapterMap(chapterData);
         }
-        
     }
 
     public void OnDestroy()

@@ -14,6 +14,7 @@ public class MainMenuManager : MonoBehaviour
     [SerializeField] private RectTransform mainMenuPanel;
     [SerializeField] private RectTransform campaignPanel;
     [SerializeField] private RectTransform mapPanel;
+    [SerializeField] private RectTransform shopPanel;
 
     private void Awake()
     {
@@ -25,6 +26,13 @@ public class MainMenuManager : MonoBehaviour
             SoundManager.Instance.PlayUIClick();
         Debug.Log("Open Chapter");
         SlidePanel(campaignPanel, mapPanel);
+    }
+    public void OnShopButton()
+    {
+        if (SoundManager.Instance != null)
+            SoundManager.Instance.PlayUIClick();
+        Debug.Log("Open Shop");
+        SlidePanel(mainMenuPanel, shopPanel);
     }
 
     public void OnPlayCampaignButton()
@@ -41,6 +49,20 @@ public class MainMenuManager : MonoBehaviour
             SoundManager.Instance.PlayUIClick();
         Debug.Log("Back to Main Menu");
         SlidePanel(campaignPanel,mainMenuPanel);
+    }
+    public void OnBackMainMenuFromShopButton()
+    {
+        if (SoundManager.Instance != null)
+            SoundManager.Instance.PlayUIClick();
+        Debug.Log("Back to Main Menu");
+        SlidePanel(shopPanel,mainMenuPanel);
+    }
+    public void OnBackCampaignFromChapterButton()
+    {
+        if (SoundManager.Instance != null)
+            SoundManager.Instance.PlayUIClick();
+        Debug.Log("Back to Main Menu");
+        SlidePanel(mapPanel,campaignPanel);
     }
     public void OnPlayMultiplayerButton()
     {
