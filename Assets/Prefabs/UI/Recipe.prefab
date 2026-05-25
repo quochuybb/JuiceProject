@@ -256,7 +256,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 976802224582265623}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 5759041263795392359}
+        m_TargetAssemblyTypeName: 
+        m_MethodName: 
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!1 &3943421331427067145
 GameObject:
   m_ObjectHideFlags: 0
@@ -526,6 +538,9 @@ MonoBehaviour:
   recipeDescription: {fileID: 6685391277504901394}
   recipeCost: {fileID: 7531375973369573324}
   recipeData: {fileID: 0}
+  buyButton: {fileID: 4636701059273211507}
+  buyBtn: {fileID: 0}
+  data: {fileID: 0}
 --- !u!1 &8086791648283681291
 GameObject:
   m_ObjectHideFlags: 0

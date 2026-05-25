@@ -25,6 +25,7 @@ public class BoardManager : MonoBehaviour
     [SerializeField] private float currentScore;
     [SerializeField] private float targetScore;
     [SerializeField] private TextMeshProUGUI scoreText;
+    [SerializeField] private TextMeshProUGUI gameModeText;
     public Sprite[] numberSprites;
 
     [SerializeField] private int stage = 1;
@@ -34,6 +35,17 @@ public class BoardManager : MonoBehaviour
     private CellUI selectedCellUI;
 
     private List<CellData> dataList;
+    [Header("Recipe Crafting Mode Settings")]
+    public float orderTimeLimit = 60f; 
+    [SerializeField] private TextMeshProUGUI orderTimerText; 
+    [SerializeField] private TextMeshProUGUI orderNameText;  
+
+    private float currentOrderTimer;
+    private bool isTimerRunning = false;
+    private int completedOrdersCount = 0;
+    
+    private int currentTargetVal1; 
+    private int currentTargetVal2;
     public static BoardManager Instance { get; private set; }
 
     private void Awake()
@@ -58,17 +70,37 @@ public class BoardManager : MonoBehaviour
             false
         );
     }
+    private void Update()
+    {
+        if (currentGameMode == GameModeType.RecipeCrafting && isTimerRunning)
+        {
+            currentOrderTimer -= Time.deltaTime;
+
+            if (orderTimerText != null) 
+            {
+                orderTimerText.text = "Time: " + Mathf.CeilToInt(currentOrderTimer).ToString() + "s";
+            }
+            if (currentOrderTimer <= 0)
+            {
+                isTimerRunning = false;
+                HandleGameOver(); 
+            }
+        }
+    }
     public void GenerateStage(int currentStage, GameModeType mode, float targetScoreForMode = 0, bool keepMissions = false)
     {
-        if (mode != GameModeType.TargetScore)
-        {
-            scoreText.gameObject.SetActive(false);
-        }
+        gameModeText.text = mode.ToString();
         currentGameMode = mode;
         currentScore = 0;
         targetScore = targetScoreForMode;
-        
-        if (scoreText != null) scoreText.text = "0 / " + targetScore.ToString();
+        if (scoreText != null) 
+        {
+            scoreText.gameObject.SetActive(mode == GameModeType.TargetScore);
+            scoreText.text = "0 / " + targetScore.ToString();
+        }
+        if (orderTimerText != null) orderTimerText.gameObject.SetActive(mode == GameModeType.RecipeCrafting);
+        if (orderNameText != null) orderNameText.gameObject.SetActive(mode == GameModeType.RecipeCrafting);
+        if (gemManager != null) gemManager.gameObject.SetActive(mode == GameModeType.GemMission);
 
         dataList = BoardGenerator.GenerateInitialBoard(currentStage, COLUMNS);
 
@@ -77,9 +109,45 @@ public class BoardManager : MonoBehaviour
             if (!keepMissions) gemManager.GenerateMission();
             gemManager.AssignGemsToBoard(dataList, 0, dataList.Count);
         }
-
+        if (currentGameMode == GameModeType.RecipeCrafting)
+        {
+            completedOrdersCount = 0;
+            GenerateNextOrder();
+        }
+        else
+        {
+            isTimerRunning = false; 
+        }
         GenerateBoardEmpty(TOTAL_CELLS_TO_SPAWN);
         ImplementNumberToCell(dataList, 0);
+    }
+    private void GenerateNextOrder()
+    {
+        currentOrderTimer = orderTimeLimit;
+        isTimerRunning = true;
+        
+        bool askForRecipe = (GameSession.recipeList != null && GameSession.recipeList.Count > 0) 
+                            && (UnityEngine.Random.value > 0.5f);
+
+        if (askForRecipe)
+        {
+            int randomIndex = UnityEngine.Random.Range(0, GameSession.recipeList.Count);
+            RecipeData targetRecipe = GameSession.recipeList[randomIndex];
+
+            currentTargetVal1 = targetRecipe.foodFirst;
+            currentTargetVal2 = targetRecipe.foodSecond;
+
+            if (orderNameText != null) orderNameText.text = "Order: " + targetRecipe.recipeName;
+        }
+        else
+        {
+            int randomFruit = UnityEngine.Random.Range(1, 10);
+            
+            currentTargetVal1 = randomFruit;
+            currentTargetVal2 = randomFruit;
+
+            if (orderNameText != null) orderNameText.text = "Order: Cặp số " + randomFruit;
+        }
     }
 
     public void GenerateBoardEmpty(int totalCellToSpawn)
@@ -193,8 +261,10 @@ public class BoardManager : MonoBehaviour
         {
             int val1 = selectedCellUI.cell.value;
             int val2 = clickedCellUI.cell.value;
+            RecipeData matchedRecipe = RecipeManager.instance.GetMatchingRecipe(val1, val2);
+            bool isValidPair = (val1 == val2) || (matchedRecipe != null);
             
-            if (val1 == val2 || val1 + val2 == 10)
+            if (isValidPair)
             {
                 HandleBlockedMatch(selectedCellUI, clickedCellUI);
                 selectedCellUI.ToggleSelection(false); 
@@ -253,6 +323,25 @@ public class BoardManager : MonoBehaviour
                 break;
 
             case GameModeType.RecipeCrafting:
+                int val1 = cell1.cell.value;
+                int val2 = cell2.cell.value;
+                bool isCorrectOrder = (val1 == currentTargetVal1 && val2 == currentTargetVal2) || 
+                                      (val1 == currentTargetVal2 && val2 == currentTargetVal1);
+
+                if (isCorrectOrder)
+                {
+                    completedOrdersCount++;
+                    Debug.Log($"Hoàn thành {completedOrdersCount}/4 đơn hàng!");
+
+                    if (completedOrdersCount >= 4) 
+                    {
+                        isTimerRunning = false;
+                    }
+                    else
+                    {
+                        GenerateNextOrder();
+                    }
+                }
                 break;
         }
 
@@ -398,14 +487,14 @@ public class BoardManager : MonoBehaviour
     {
         if (SoundManager.Instance != null)
             SoundManager.Instance.PlayUIClick();
-
         SceneManager.LoadScene("MainMenu");
     }
 
     private bool IsMatch(CellData firstCell, CellData secondCell)
     {
-        if (firstCell.value != secondCell.value && firstCell.value + secondCell.value != 10) return false; 
-        
+        bool isValidPair = (firstCell.value == secondCell.value) || 
+                           (RecipeManager.instance.GetMatchingRecipe(firstCell.value, secondCell.value) != null);
+        if (!isValidPair) return false;
         int minIndex = Mathf.Min(firstCell.indexBoard, secondCell.indexBoard);
         int maxIndex = Mathf.Max(firstCell.indexBoard, secondCell.indexBoard);
         
@@ -616,7 +705,8 @@ public class BoardManager : MonoBehaviour
         if (winPanel != null) winPanel.SetActive(false);
         if (losePanel != null) losePanel.SetActive(false);
 
-        GenerateStage(stage, GameModeType.GemMission, 0, false);
+        GenerateStage(stage, currentGameMode, targetScore, false);
+        
     }
 
     public void NextLevel()
@@ -666,6 +756,7 @@ public class BoardManager : MonoBehaviour
                 break;
 
             case GameModeType.RecipeCrafting:
+                isWin = (completedOrdersCount >= 4);
                 break;
         }
 
