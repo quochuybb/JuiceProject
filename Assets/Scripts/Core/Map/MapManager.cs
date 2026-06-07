@@ -45,8 +45,49 @@ public class MapManager : MonoBehaviour
         {
             ConnectLayers(logicMap[i], logicMap[i + 1], mapRNG);
         }
-
+        UpdateNodeStates(logicMap);
         DrawMapToScreen(logicMap);
+    }
+    private void UpdateNodeStates(List<List<MapNodeData>> logicMap)
+    {
+        // 1. Trường hợp mới bắt đầu (Chưa hoàn thành Node nào)
+        if (GameSession.CompletedNodes.Count == 0)
+        {
+            // Mở khóa toàn bộ Node ở Tầng đầu tiên (Layer 0)
+            foreach (MapNodeData node in logicMap[0])
+            {
+                node.state = NodeState.Available;
+            }
+            return;
+        }
+
+        // 2. Đã có tiến trình chơi
+        MapNodeData lastCompletedNode = null;
+
+        // Quét toàn bộ bản đồ để đánh dấu các Node đã hoàn thành
+        foreach (var layer in logicMap)
+        {
+            foreach (var node in layer)
+            {
+                if (GameSession.CompletedNodes.Contains(node.nodeID))
+                {
+                    node.state = NodeState.Completed;
+                    lastCompletedNode = node; // Node cuối cùng trong list chính là vị trí hiện tại
+                }
+            }
+        }
+
+        // 3. Mở khóa các con đường kết nối với Node vừa hoàn thành
+        if (lastCompletedNode != null)
+        {
+            foreach (MapNodeData nextNode in lastCompletedNode.outgoingEdges)
+            {
+                if (nextNode.state != NodeState.Completed)
+                {
+                    nextNode.state = NodeState.Available;
+                }
+            }
+        }
     }
 
     private void DrawMapToScreen(List<List<MapNodeData>> logicMap)

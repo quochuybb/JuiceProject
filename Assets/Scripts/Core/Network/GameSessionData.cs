@@ -1,0 +1,83 @@
+using System;
+using System.Collections.Generic;
+
+[Serializable]
+public class GameSessionData
+{
+    public int CurrentLayer;
+    public GameModeType SelectedMode;
+    public float TargetScore;
+    public string CurrentNodeID;
+    public int CurrentChapter;
+    public NodeType type;
+    
+    // Lưu danh sách ID của các món đồ thay vì lưu nguyên ScriptableObject
+    public List<int> recipeListIDs = new List<int>();
+    
+    public bool isFull;
+    public float currentCoin;
+    
+    // Tương tự, lưu ID
+    public List<int> inventoryListIDs = new List<int>();
+    
+    public List<string> CompletedNodes = new List<string>();
+
+    public GameSessionData() { }
+
+    // Đóng gói dữ liệu từ GameSession (Gọi trước khi gửi lên Server)
+    public void PackFromGameSession()
+    {
+        CurrentLayer = GameSession.CurrentLayer;
+        SelectedMode = GameSession.SelectedMode;
+        TargetScore = GameSession.TargetScore;
+        CurrentNodeID = GameSession.CurrentNodeID;
+        CurrentChapter = GameSession.CurrentChapter;
+        type = GameSession.type;
+        isFull = GameSession.isFull;
+        currentCoin = GameSession.currentCoin;
+        
+        CompletedNodes = new List<string>(GameSession.CompletedNodes);
+
+        recipeListIDs.Clear();
+        foreach (var r in GameSession.recipeList)
+        {
+            if (r != null) recipeListIDs.Add(r.recipeID);
+        }
+
+        inventoryListIDs.Clear();
+        foreach (var r in GameSession.inventoryList)
+        {
+            if (r != null) inventoryListIDs.Add(r.recipeID);
+        }
+    }
+
+    // Giải nén dữ liệu vào GameSession (Sau khi nhận từ Server)
+    // Lưu ý: Cần truyền vào một từ điển Dictionary<int, RecipeData> để phục hồi lại item
+    public void UnpackToGameSession(Dictionary<int, RecipeData> allRecipes)
+    {
+        GameSession.CurrentLayer = CurrentLayer;
+        GameSession.SelectedMode = SelectedMode;
+        GameSession.TargetScore = TargetScore;
+        GameSession.CurrentNodeID = CurrentNodeID;
+        GameSession.CurrentChapter = CurrentChapter;
+        GameSession.type = type;
+        GameSession.isFull = isFull;
+        GameSession.currentCoin = currentCoin;
+
+        GameSession.CompletedNodes = new List<string>(CompletedNodes);
+
+        GameSession.recipeList.Clear();
+        foreach (var id in recipeListIDs)
+        {
+            if (allRecipes.TryGetValue(id, out var recipe))
+                GameSession.recipeList.Add(recipe);
+        }
+
+        GameSession.inventoryList.Clear();
+        foreach (var id in inventoryListIDs)
+        {
+            if (allRecipes.TryGetValue(id, out var recipe))
+                GameSession.inventoryList.Add(recipe);
+        }
+    }
+}

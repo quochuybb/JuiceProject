@@ -671,6 +671,10 @@ public class BoardManager : MonoBehaviour
 
     private void HandleGameWin()
     {
+        if (!GameSession.CompletedNodes.Contains(GameSession.CurrentNodeID))
+        {
+            GameSession.CompletedNodes.Add(GameSession.CurrentNodeID);
+        }
         if (winPanel != null)
         {
             winPanel.SetActive(true);
@@ -714,6 +718,7 @@ public class BoardManager : MonoBehaviour
         if (SoundManager.Instance != null)
             SoundManager.Instance.PlayUIClick();
         Debug.Log("Win back to map chapter");
+        SceneManager.LoadScene("MainMenu");
         // level++;
         //
         // stage = 1;

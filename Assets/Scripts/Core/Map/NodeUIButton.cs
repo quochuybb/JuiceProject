@@ -61,5 +61,20 @@ public class NodeUIButton : MonoBehaviour
                 chapterType.text = "Boss";
                 break;
         }
+        if (myData.state == NodeState.Available)
+        {
+            button.interactable = true;
+            // (Tùy chọn) Đổi màu sáng lên, có hiệu ứng chớp nháy...
+        }
+        else if (myData.state == NodeState.Completed)
+        {
+            button.interactable = false;
+            // (Tùy chọn) Hiện dấu tick Xanh lá, đổi màu tối đi...
+        }
+        else // Locked
+        {
+            button.interactable = false;
+            // (Tùy chọn) Biến thành màu xám, hiện icon ổ khóa...
+        }
     }
 }

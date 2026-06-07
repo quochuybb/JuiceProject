@@ -1,7 +1,9 @@
 using System;
 using DG.Tweening;
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class MainMenuManager : MonoBehaviour
 {
@@ -15,10 +17,53 @@ public class MainMenuManager : MonoBehaviour
     [SerializeField] private RectTransform campaignPanel;
     [SerializeField] private RectTransform mapPanel;
     [SerializeField] private RectTransform shopPanel;
+    [SerializeField] private RectTransform signInPanel;
+    [SerializeField] private TMP_InputField username;
+    [SerializeField] private TMP_InputField password;
 
     private void Awake()
     {
         Instance = this;
+    }
+
+    private void OnEnable()
+    {
+        // Lót dép ngồi nghe: Nếu ConnectionManager hét lên "Thành công", lập tức chạy hàm OnSignInSuccess
+        ConnectionManager.OnLoginSuccess += OnSignInSuccess;
+    }
+
+    private void OnDisable()
+    {
+        // Khi UI này bị tắt hoặc bị xóa, phải hủy đăng ký để tránh lỗi tràn RAM
+        ConnectionManager.OnLoginSuccess -= OnSignInSuccess;
+    }
+
+    public void OnStartServer()
+    {
+        ConnectionManager.Instance.StartDedicatedServer();
+    }
+    public void OnSignIn()
+    {
+        if (username.text == "")
+        {
+            username.text = "admin";
+        }
+
+        if (password.text == "")
+        {
+            password.text = "admin123";
+        }
+        ConnectionManager.Instance.StartClient(username.text, password.text);
+        ;
+    }
+    public void OnSignInSuccess()
+    {
+        Debug.Log("sign in success");
+        if (SoundManager.Instance != null)
+            SoundManager.Instance.PlayUIClick();
+            
+        // Trượt Panel Đăng Nhập ra ngoài, Trượt Panel Sảnh (Main Menu) vào giữa
+        SlidePanel(signInPanel, mainMenuPanel);
     }
     public void OnPlayChapterButton()
     {

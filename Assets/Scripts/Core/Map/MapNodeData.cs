@@ -1,5 +1,10 @@
 ﻿using System.Collections.Generic;
-
+public enum NodeState
+{
+    Locked,
+    Available,
+    Completed
+}
 public class MapNodeData 
 {
     public string nodeID;
@@ -11,6 +16,7 @@ public class MapNodeData
     public GameModeType gameMode;
     public float targetScore;
 
+    public NodeState state = NodeState.Locked;
     public List<MapNodeData> incomingEdges = new List<MapNodeData>();
     public List<MapNodeData> outgoingEdges = new List<MapNodeData>();
 
