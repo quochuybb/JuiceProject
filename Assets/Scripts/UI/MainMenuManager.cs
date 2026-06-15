@@ -170,10 +170,35 @@ public class MainMenuManager : MonoBehaviour
         if (SoundManager.Instance != null)
             SoundManager.Instance.PlayUIClick();
 
-        Application.Quit();
+        if (Unity.Netcode.NetworkManager.Singleton != null && Unity.Netcode.NetworkManager.Singleton.IsClient)
+        {
+            if (Unity.Netcode.NetworkManager.Singleton.LocalClient != null && Unity.Netcode.NetworkManager.Singleton.LocalClient.PlayerObject != null)
+            {
+                var localPlayer = Unity.Netcode.NetworkManager.Singleton.LocalClient.PlayerObject.GetComponent<NetworkPlayer>();
+                if (localPlayer != null)
+                {
+                    localPlayer.SaveProgress();
+                    StartCoroutine(QuitAfterDelay(0.5f));
+                    return;
+                }
+            }
+        }
+        
+        DoQuit();
+    }
 
-    #if UNITY_EDITOR
+    private System.Collections.IEnumerator QuitAfterDelay(float delay)
+    {
+        // Chờ một chút để Server RPC kịp gửi đi
+        yield return new WaitForSeconds(delay);
+        DoQuit();
+    }
+
+    private void DoQuit()
+    {
+        Application.Quit();
+#if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
-    #endif
+#endif
     }
 }
