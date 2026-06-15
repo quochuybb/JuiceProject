@@ -1,15 +1,24 @@
 using UnityEngine;
-using SQLite;
+using Npgsql;
+using Dapper;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using Newtonsoft.Json;
+using System.Data;
 
 public class DatabaseManager : MonoBehaviour
 {
     public static DatabaseManager Instance { get; private set; }
 
-    private SQLiteConnection _db;
+    [Header("PostgreSQL Settings")]
+    public string Host = "localhost";
+    public int Port = 5432;
+    public string Username = "admin";
+    public string Password = "adminpassword123";
+    public string Database = "juicematch_db";
+
+    private string _connectionString;
 
     private void Awake()
     {
@@ -24,43 +33,76 @@ public class DatabaseManager : MonoBehaviour
         InitDatabase();
     }
 
+    private IDbConnection GetConnection()
+    {
+        return new NpgsqlConnection(_connectionString);
+    }
+
     private void InitDatabase()
     {
-        // Lưu file database ở thư mục an toàn của server
-        string dbPath = Path.Combine(Application.persistentDataPath, "ServerData.db");
-        _db = new SQLiteConnection(dbPath);
+        _connectionString = $"Host={Host};Port={Port};Username={Username};Password={Password};Database={Database};";
+
+        using (var db = GetConnection())
+        {
+            db.Open();
+            
+            // Tạo bảng nếu chưa có (PostgreSQL syntax)
+            string createTableQuery = @"
+                CREATE TABLE IF NOT EXISTS AccountUser (
+                    Username VARCHAR(255) PRIMARY KEY,
+                    PasswordHash VARCHAR(255) NOT NULL,
+                    MMR INT DEFAULT 1000,
+                    SessionDataJSON TEXT
+                );";
+            
+            db.Execute(createTableQuery);
+        }
         
-        // Tạo bảng nếu chưa có
-        _db.CreateTable<AccountUser>();
-        
-        Debug.Log($"[Database] SQLite initialized at: {dbPath}");
+        Debug.Log($"[Database] PostgreSQL initialized at {Host}:{Port}");
     }
 
     public bool CreateAccount(string username, string password)
     {
-        var existingUser = _db.Find<AccountUser>(username);
-        if (existingUser != null)
+        using (var db = GetConnection())
         {
-            Debug.LogWarning($"[Database] Tên đăng nhập '{username}' đã tồn tại!");
-            return false;
-        }
+            var existingUser = db.QueryFirstOrDefault<AccountUser>("SELECT * FROM AccountUser WHERE Username = @Username", new { Username = username });
+            
+            if (existingUser != null)
+            {
+                Debug.LogWarning($"[Database] Tên đăng nhập '{username}' đã tồn tại!");
+                return false;
+            }
 
-        string hash = HashPassword(password);
-        var newUser = new AccountUser(username, hash);
-        
-        _db.Insert(newUser);
-        Debug.Log($"[Database] Đã tạo tài khoản thành công: {username}");
-        return true;
+            string hash = HashPassword(password);
+            
+            string insertQuery = @"
+                INSERT INTO AccountUser (Username, PasswordHash, MMR, SessionDataJSON) 
+                VALUES (@Username, @PasswordHash, @MMR, @SessionDataJSON)";
+                
+            db.Execute(insertQuery, new { 
+                Username = username, 
+                PasswordHash = hash, 
+                MMR = 1000, 
+                SessionDataJSON = "" 
+            });
+
+            Debug.Log($"[Database] Đã tạo tài khoản thành công: {username}");
+            return true;
+        }
     }
 
     public AccountUser GetAccount(string username)
     {
-        return _db.Find<AccountUser>(username);
+        using (var db = GetConnection())
+        {
+            return db.QueryFirstOrDefault<AccountUser>("SELECT * FROM AccountUser WHERE Username = @Username", new { Username = username });
+        }
     }
 
     public bool VerifyAccount(string username, string password, out AccountUser user)
     {
-        user = _db.Find<AccountUser>(username);
+        user = GetAccount(username);
+        
         if (user == null)
         {
             Debug.LogWarning($"[Database] Không tìm thấy tài khoản: {username}");
@@ -80,28 +122,25 @@ public class DatabaseManager : MonoBehaviour
     
     public void UpdateMMR(string username, int newMMR)
     {
-        var user = _db.Find<AccountUser>(username);
-        if (user != null)
+        using (var db = GetConnection())
         {
-            user.MMR = newMMR;
-            _db.Update(user);
+            db.Execute("UPDATE AccountUser SET MMR = @MMR WHERE Username = @Username", new { MMR = newMMR, Username = username });
         }
     }
 
     public void SaveProgress(string username, GameSessionData sessionData)
     {
-        var user = _db.Find<AccountUser>(username);
-        if (user != null)
+        string json = JsonConvert.SerializeObject(sessionData);
+        using (var db = GetConnection())
         {
-            user.SessionDataJSON = JsonConvert.SerializeObject(sessionData);
-            _db.Update(user);
+            db.Execute("UPDATE AccountUser SET SessionDataJSON = @JSON WHERE Username = @Username", new { JSON = json, Username = username });
             Debug.Log($"[Database] Đã lưu tiến trình cho {username}");
         }
     }
 
     public GameSessionData LoadProgress(string username)
     {
-        var user = _db.Find<AccountUser>(username);
+        var user = GetAccount(username);
         if (user != null && !string.IsNullOrEmpty(user.SessionDataJSON))
         {
             try
@@ -128,14 +167,6 @@ public class DatabaseManager : MonoBehaviour
                 builder.Append(bytes[i].ToString("x2"));
             }
             return builder.ToString();
-        }
-    }
-
-    private void OnDestroy()
-    {
-        if (_db != null)
-        {
-            _db.Close();
         }
     }
 }

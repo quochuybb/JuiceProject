@@ -9,6 +9,7 @@ public class ServerAuthManager : MonoBehaviour
 
     public static string GetUsernameForClient(ulong clientId)
     {
+        Debug.Log("GetUsernameForClient: " + clientId + " - " + ClientUsernames[clientId]);
         if (ClientUsernames.TryGetValue(clientId, out string username))
             return username;
         return "";

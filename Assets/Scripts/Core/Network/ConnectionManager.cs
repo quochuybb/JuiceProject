@@ -93,6 +93,8 @@ public class ConnectionManager : MonoBehaviour
         var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
         transport.SetConnectionData(ServerIP, ServerPort);
         
+        NetworkManager.Singleton.NetworkConfig.ConnectionApproval = true;
+        
         SetClientAuthData(username, password);
 
         Debug.Log($"[ConnectionManager] Starting Host (Server + Client)...");

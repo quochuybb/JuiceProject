@@ -1,9 +1,7 @@
 using UnityEngine;
-using SQLite;
 
 public class AccountUser
 {
-    [SQLite.PrimaryKey]
     public string Username { get; set; }
     
     public string PasswordHash { get; set; }
