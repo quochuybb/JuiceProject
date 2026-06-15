@@ -7,6 +7,7 @@ public static class GameSession
     public static float TargetScore = 0;
     public static string CurrentNodeID = "";
     public static int CurrentChapter = 1;
+    public static string CurrentChapterID = "";
     public static NodeType type;
     public static List<RecipeData> recipeList = new List<RecipeData>(5);
     public static bool isFull = false;

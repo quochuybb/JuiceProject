@@ -61,6 +61,7 @@ public class MapManager : MonoBehaviour
 
         currentChapterData = chapter;
         GameSession.CurrentChapterData = chapter;
+        GameSession.CurrentChapterID = chapter.chapterID;
         
         // Xóa các Node cũ trên UI trước khi vẽ lại
         foreach (Transform child in mapContainerTransform)

@@ -150,6 +150,20 @@ public class NetworkPlayer : NetworkBehaviour
             }
 
             data.UnpackToGameSession(allRecipesDictionary);
+
+            // Phục hồi ChapterData dựa trên CurrentChapterID
+            if (!string.IsNullOrEmpty(GameSession.CurrentChapterID))
+            {
+                var allChapters = Resources.LoadAll<ChapterData>("ScriptObjects");
+                foreach (var c in allChapters)
+                {
+                    if (c != null && c.chapterID == GameSession.CurrentChapterID)
+                    {
+                        GameSession.CurrentChapterData = c;
+                        break;
+                    }
+                }
+            }
         }
     }
 

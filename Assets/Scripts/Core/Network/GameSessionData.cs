@@ -9,6 +9,7 @@ public class GameSessionData
     public float TargetScore;
     public string CurrentNodeID;
     public int CurrentChapter;
+    public string CurrentChapterID;
     public NodeType type;
     public int CurrentMapSeed;
     
@@ -33,6 +34,7 @@ public class GameSessionData
         TargetScore = GameSession.TargetScore;
         CurrentNodeID = GameSession.CurrentNodeID;
         CurrentChapter = GameSession.CurrentChapter;
+        CurrentChapterID = GameSession.CurrentChapterID;
         type = GameSession.type;
         CurrentMapSeed = GameSession.CurrentMapSeed;
         isFull = GameSession.isFull;
@@ -62,6 +64,7 @@ public class GameSessionData
         GameSession.TargetScore = TargetScore;
         GameSession.CurrentNodeID = CurrentNodeID;
         GameSession.CurrentChapter = CurrentChapter;
+        GameSession.CurrentChapterID = CurrentChapterID;
         GameSession.type = type;
         GameSession.CurrentMapSeed = CurrentMapSeed;
         GameSession.isFull = isFull;
