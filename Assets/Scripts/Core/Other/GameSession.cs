@@ -10,7 +10,25 @@ public static class GameSession
     public static NodeType type;
     public static List<RecipeData> recipeList = new List<RecipeData>(5);
     public static bool isFull = false;
-    public static float currentCoin = 0;
+    public static event System.Action OnCoinChanged;
+
+    private static float _currentCoin = 0;
+    public static float currentCoin
+    {
+        get => _currentCoin;
+        set
+        {
+            if (_currentCoin != value)
+            {
+                _currentCoin = value;
+                OnCoinChanged?.Invoke();
+            }
+        }
+    }
     public static List<RecipeData> inventoryList = new List<RecipeData>();
     public static List<string> CompletedNodes = new List<string>();
+
+    // Lưu lại Chapter đang chơi để vẽ lại map khi quay về MainMenu
+    public static ChapterData CurrentChapterData;
+    public static int CurrentMapSeed = 0;
 }

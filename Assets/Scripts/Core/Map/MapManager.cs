@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using Random = System.Random;
@@ -26,12 +26,48 @@ public class MapManager : MonoBehaviour
         Instance = this;
     }
 
+    // Được gọi khi quay lại MainMenu từ scene Game để vẽ lại map Chapter hiện tại
+    public void ReloadCurrentMap()
+    {
+        if (GameSession.CurrentChapterData == null) return;
+
+        currentChapterData = GameSession.CurrentChapterData;
+        currentSeed = GameSession.CurrentMapSeed;
+
+        // Xóa các Node cũ trên UI trước khi vẽ lại
+        foreach (Transform child in mapContainerTransform)
+        {
+            Destroy(child.gameObject);
+        }
+
+        GenerateMapGraph();
+    }
+
     public void StartChapterMap(ChapterData chapter)
     {
         MainMenuManager.Instance.OnPlayChapterButton();
-        currentChapterData = chapter;
-        currentSeed = chapter.chapterID.GetHashCode() + UnityEngine.Random.Range(0, 1000);
         
+        // Nếu chọn lại chính Chapter đang chơi và đã có Seed, dùng lại Seed cũ để giữ nguyên map
+        if (GameSession.CurrentChapterData == chapter && GameSession.CurrentMapSeed != 0)
+        {
+            currentSeed = GameSession.CurrentMapSeed;
+        }
+        else // Nếu chọn Chapter mới, random seed mới và reset các Node đã hoàn thành
+        {
+            currentSeed = chapter.chapterID.GetHashCode() + UnityEngine.Random.Range(0, 1000);
+            GameSession.CurrentMapSeed = currentSeed;
+            GameSession.CompletedNodes.Clear(); // Bắt đầu lại hành trình mới
+        }
+
+        currentChapterData = chapter;
+        GameSession.CurrentChapterData = chapter;
+        
+        // Xóa các Node cũ trên UI trước khi vẽ lại
+        foreach (Transform child in mapContainerTransform)
+        {
+            Destroy(child.gameObject);
+        }
+
         GenerateMapGraph();
     }
 
@@ -92,6 +128,12 @@ public class MapManager : MonoBehaviour
 
     private void DrawMapToScreen(List<List<MapNodeData>> logicMap)
     {
+        // Xóa toàn bộ Node cũ trước khi vẽ lại để tránh bị chồng chất
+        foreach (Transform child in mapContainerTransform)
+        {
+            Destroy(child.gameObject);
+        }
+
         float layerSpacing = 250f; 
         float nodeSpacing = 200f;  
         float topPadding = 150f;   

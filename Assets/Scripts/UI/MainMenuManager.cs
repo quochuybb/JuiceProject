@@ -2,6 +2,7 @@ using System;
 using DG.Tweening;
 using TMPro;
 using UnityEngine;
+using Unity.Netcode;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -20,22 +21,55 @@ public class MainMenuManager : MonoBehaviour
     [SerializeField] private RectTransform signInPanel;
     [SerializeField] private TMP_InputField username;
     [SerializeField] private TMP_InputField password;
+    [SerializeField] private TextMeshProUGUI coin;
 
     private void Awake()
     {
         Instance = this;
     }
 
+    private void Start()
+    {
+        coin.text = GameSession.currentCoin.ToString();
+
+        // Nếu người chơi đã đăng nhập rồi (quay lại từ scene Game),
+        // bỏ qua màn hình SignIn và hiển thị thẳng Map Panel
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient)
+        {
+            signInPanel.anchoredPosition = rightOffScreen;
+            mainMenuPanel.anchoredPosition = rightOffScreen;
+            campaignPanel.anchoredPosition = rightOffScreen;
+            shopPanel.anchoredPosition = rightOffScreen;
+            mapPanel.anchoredPosition = centerPosition;
+
+            // Vẽ lại bản đồ Chapter đang chơi
+            if (MapManager.Instance != null)
+            {
+                MapManager.Instance.ReloadCurrentMap();
+            }
+        }
+    }
+
     private void OnEnable()
     {
         // Lót dép ngồi nghe: Nếu ConnectionManager hét lên "Thành công", lập tức chạy hàm OnSignInSuccess
         ConnectionManager.OnLoginSuccess += OnSignInSuccess;
+        GameSession.OnCoinChanged += UpdateCoinDisplay;
     }
 
     private void OnDisable()
     {
         // Khi UI này bị tắt hoặc bị xóa, phải hủy đăng ký để tránh lỗi tràn RAM
         ConnectionManager.OnLoginSuccess -= OnSignInSuccess;
+        GameSession.OnCoinChanged -= UpdateCoinDisplay;
+    }
+
+    public void UpdateCoinDisplay()
+    {
+        if (coin != null)
+        {
+            coin.text = GameSession.currentCoin.ToString();
+        }
     }
 
     public void OnStartServer()

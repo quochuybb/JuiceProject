@@ -24,8 +24,10 @@ public class BoardManager : MonoBehaviour
     [SerializeField] private Button addNumberButton;
     [SerializeField] private float currentScore;
     [SerializeField] private float targetScore;
+    [SerializeField] private float prizeBase = 3;
     [SerializeField] private TextMeshProUGUI scoreText;
     [SerializeField] private TextMeshProUGUI gameModeText;
+    [SerializeField] private TextMeshProUGUI prizeText;
     public Sprite[] numberSprites;
 
     [SerializeField] private int stage = 1;
@@ -679,6 +681,11 @@ public class BoardManager : MonoBehaviour
         {
             winPanel.SetActive(true);
         }
+
+        float totalPrize = prizeBase * GameSession.CurrentChapter + GameSession.CurrentLayer;
+        GameSession.currentCoin += totalPrize;
+        prizeText.text = "+" + totalPrize;
+
     }
     
     public void RetryCurrentLevel()
@@ -713,11 +720,10 @@ public class BoardManager : MonoBehaviour
         
     }
 
-    public void NextLevel()
+    public void BackToMap()
     {
         if (SoundManager.Instance != null)
             SoundManager.Instance.PlayUIClick();
-        Debug.Log("Win back to map chapter");
         SceneManager.LoadScene("MainMenu");
         // level++;
         //

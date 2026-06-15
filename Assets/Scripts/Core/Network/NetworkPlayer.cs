@@ -4,6 +4,8 @@ using Unity.Netcode;
 
 public class NetworkPlayer : NetworkBehaviour
 {
+    public static NetworkPlayer LocalInstance { get; private set; }
+
     // Biến đồng bộ: Bất cứ khi nào Server đổi giá trị này, mọi Client sẽ thấy
     public NetworkVariable<int> PlayerMMR = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     
@@ -14,6 +16,10 @@ public class NetworkPlayer : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
+        // Giữ NetworkPlayer tồn tại xuyên suốt các Scene để tránh lỗi
+        // "Invalid Destroy" khi Client chuyển scene (chỉ Server mới được Destroy NetworkObject)
+        DontDestroyOnLoad(gameObject);
+
         if (IsServer)
         {
             // Khi người chơi được Spawn trên Server, nạp dữ liệu từ SQLite
@@ -22,10 +28,7 @@ public class NetworkPlayer : NetworkBehaviour
             {
                 PlayerUsername.Value = username;
                 
-                var user = DatabaseManager.Instance.LoadProgress(username);
-                // Giả sử LoadProgress trả về Session, ta tạm lấy MMR từ Database. 
-                // Wait, LoadProgress chỉ trả về GameSessionData.
-                // Lấy điểm MMR từ DB
+                // Lấy điểm MMR và chuỗi JSON từ DB
                 var accountInfo = DatabaseManager.Instance.GetAccount(username);
                 if (accountInfo != null)
                 {
@@ -39,11 +42,12 @@ public class NetworkPlayer : NetworkBehaviour
                 }
             }
             
-            // Đăng ký với ServerMatchmaker (Tạm thời tắt để Test Đăng Nhập trước)
-            // ServerMatchmaker.Instance.RegisterPlayer(this);
+            // Đăng ký danh sách online với ServerMatchmaker
+            ServerMatchmaker.Instance.RegisterPlayer(this);
         }
         else if (IsOwner)
         {
+            LocalInstance = this;
             // Báo cho UI biết là đã nạp xong
             Debug.Log($"[Client] Tôi đã kết nối thành công với Username: {PlayerUsername.Value}");
         }
@@ -55,7 +59,33 @@ public class NetworkPlayer : NetworkBehaviour
         {
             ServerMatchmaker.Instance.UnregisterPlayer(this);
         }
+        else if (IsOwner)
+        {
+            LocalInstance = null;
+        }
     }
+
+    // --- CÁC HÀM CHO NÚT BẤM UI (RANKING MODE) ---
+    
+    public void StartMatchmaking()
+    {
+        if (IsOwner)
+        {
+            Debug.Log("[Client] Gửi yêu cầu Tìm Trận lên Server...");
+            CmdFindMatchServerRpc();
+        }
+    }
+
+    public void CancelMatchmaking()
+    {
+        if (IsOwner)
+        {
+            Debug.Log("[Client] Hủy Tìm Trận.");
+            CmdCancelMatchServerRpc();
+        }
+    }
+
+    // ----------------------------------------------
 
     [ServerRpc]
     public void CmdFindMatchServerRpc()
@@ -110,10 +140,56 @@ public class NetworkPlayer : NetworkBehaviour
         if (IsOwner)
         {
             Debug.Log($"[Client] Nhận được dữ liệu Save từ Server. Đang giải nén...");
-            // TODO: Ở đây bạn sẽ dùng JsonUtility hoặc Newtonsoft để giải mã chuỗi `sessionJson` 
-            // và nhét nó vào GameSession, ví dụ:
-            // var data = Newtonsoft.Json.JsonConvert.DeserializeObject<GameSessionData>(sessionJson);
-            // data.UnpackToGameSession(allRecipesDictionary);
+            var data = Newtonsoft.Json.JsonConvert.DeserializeObject<GameSessionData>(sessionJson);
+            
+            var allRecipesList = Resources.LoadAll<RecipeData>("ScriptObjects/Recipes");
+            var allRecipesDictionary = new System.Collections.Generic.Dictionary<int, RecipeData>();
+            foreach (var r in allRecipesList)
+            {
+                if (r != null) allRecipesDictionary[r.recipeID] = r;
+            }
+
+            data.UnpackToGameSession(allRecipesDictionary);
+        }
+    }
+
+    // --- CÁC HÀM XỬ LÝ LƯU GAME TỪ PHÍA CLIENT ---
+    
+    public void SaveProgress()
+    {
+        if (!IsOwner) return;
+
+        Debug.Log("[Client] Bắt đầu gom dữ liệu GameSession để lưu lên Server...");
+        
+        GameSessionData data = new GameSessionData();
+        data.PackFromGameSession();
+        
+        string json = Newtonsoft.Json.JsonConvert.SerializeObject(data);
+        
+        // Bắn dữ liệu lên Server
+        CmdSaveProgressServerRpc(json);
+    }
+
+    public void SaveAndQuit()
+    {
+        if (IsOwner)
+        {
+            SaveProgress();
+            Debug.Log("[Client] Đã gửi lệnh Lưu Game. Đang tắt ứng dụng...");
+        }
+        
+        Application.Quit();
+        
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#endif
+    }
+
+    private void OnApplicationQuit()
+    {
+        if (IsOwner)
+        {
+            SaveProgress();
         }
     }
 }

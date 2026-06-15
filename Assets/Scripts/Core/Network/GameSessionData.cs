@@ -10,6 +10,7 @@ public class GameSessionData
     public string CurrentNodeID;
     public int CurrentChapter;
     public NodeType type;
+    public int CurrentMapSeed;
     
     // Lưu danh sách ID của các món đồ thay vì lưu nguyên ScriptableObject
     public List<int> recipeListIDs = new List<int>();
@@ -33,6 +34,7 @@ public class GameSessionData
         CurrentNodeID = GameSession.CurrentNodeID;
         CurrentChapter = GameSession.CurrentChapter;
         type = GameSession.type;
+        CurrentMapSeed = GameSession.CurrentMapSeed;
         isFull = GameSession.isFull;
         currentCoin = GameSession.currentCoin;
         
@@ -61,6 +63,7 @@ public class GameSessionData
         GameSession.CurrentNodeID = CurrentNodeID;
         GameSession.CurrentChapter = CurrentChapter;
         GameSession.type = type;
+        GameSession.CurrentMapSeed = CurrentMapSeed;
         GameSession.isFull = isFull;
         GameSession.currentCoin = currentCoin;
 
