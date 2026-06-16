@@ -10,7 +10,6 @@ public class ConnectionManager : MonoBehaviour
 {
     public static ConnectionManager Instance { get; private set; }
 
-    // Khai báo các "Cái loa" (Events)
     public static event Action OnLoginSuccess;
     public static event Action<string> OnLoginFailed;
 

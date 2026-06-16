@@ -13,20 +13,17 @@ public class GameSessionData
     public NodeType type;
     public int CurrentMapSeed;
     
-    // Lưu danh sách ID của các món đồ thay vì lưu nguyên ScriptableObject
     public List<int> recipeListIDs = new List<int>();
     
     public bool isFull;
     public float currentCoin;
     
-    // Tương tự, lưu ID
     public List<int> inventoryListIDs = new List<int>();
     
     public List<string> CompletedNodes = new List<string>();
 
     public GameSessionData() { }
 
-    // Đóng gói dữ liệu từ GameSession (Gọi trước khi gửi lên Server)
     public void PackFromGameSession()
     {
         CurrentLayer = GameSession.CurrentLayer;
@@ -54,9 +51,7 @@ public class GameSessionData
             if (r != null) inventoryListIDs.Add(r.recipeID);
         }
     }
-
-    // Giải nén dữ liệu vào GameSession (Sau khi nhận từ Server)
-    // Lưu ý: Cần truyền vào một từ điển Dictionary<int, RecipeData> để phục hồi lại item
+    
     public void UnpackToGameSession(Dictionary<int, RecipeData> allRecipes)
     {
         GameSession.CurrentLayer = CurrentLayer;

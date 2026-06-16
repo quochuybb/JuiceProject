@@ -29,7 +29,6 @@ public static class GameSession
     public static List<RecipeData> inventoryList = new List<RecipeData>();
     public static List<string> CompletedNodes = new List<string>();
 
-    // Lưu lại Chapter đang chơi để vẽ lại map khi quay về MainMenu
     public static ChapterData CurrentChapterData;
     public static int CurrentMapSeed = 0;
 }

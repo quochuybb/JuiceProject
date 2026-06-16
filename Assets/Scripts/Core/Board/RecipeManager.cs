@@ -28,7 +28,18 @@ public class RecipeManager : MonoBehaviour
             recipe.GetComponent<RecipeUI>().recipeData = recipeData;
             recipe.GetComponent<RecipeUI>().SetUp();
         }
-        
+    }
+
+    public void RefreshAllRecipes()
+    {
+        foreach (Transform child in spawnPoint)
+        {
+            RecipeUI recipeUI = child.GetComponent<RecipeUI>();
+            if (recipeUI != null)
+            {
+                recipeUI.SetUp();
+            }
+        }
     }
     public RecipeData GetMatchingRecipe(int val1, int val2)
     {

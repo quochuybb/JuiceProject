@@ -26,7 +26,6 @@ public class MapManager : MonoBehaviour
         Instance = this;
     }
 
-    // Được gọi khi quay lại MainMenu từ scene Game để vẽ lại map Chapter hiện tại
     public void ReloadCurrentMap()
     {
         if (GameSession.CurrentChapterData == null) return;
@@ -34,7 +33,6 @@ public class MapManager : MonoBehaviour
         currentChapterData = GameSession.CurrentChapterData;
         currentSeed = GameSession.CurrentMapSeed;
 
-        // Xóa các Node cũ trên UI trước khi vẽ lại
         foreach (Transform child in mapContainerTransform)
         {
             Destroy(child.gameObject);
@@ -47,23 +45,21 @@ public class MapManager : MonoBehaviour
     {
         MainMenuManager.Instance.OnPlayChapterButton();
         
-        // Nếu chọn lại chính Chapter đang chơi và đã có Seed, dùng lại Seed cũ để giữ nguyên map
         if (GameSession.CurrentChapterData == chapter && GameSession.CurrentMapSeed != 0)
         {
             currentSeed = GameSession.CurrentMapSeed;
         }
-        else // Nếu chọn Chapter mới, random seed mới và reset các Node đã hoàn thành
+        else
         {
             currentSeed = chapter.chapterID.GetHashCode() + UnityEngine.Random.Range(0, 1000);
             GameSession.CurrentMapSeed = currentSeed;
-            GameSession.CompletedNodes.Clear(); // Bắt đầu lại hành trình mới
+            GameSession.CompletedNodes.Clear(); 
         }
 
         currentChapterData = chapter;
         GameSession.CurrentChapterData = chapter;
         GameSession.CurrentChapterID = chapter.chapterID;
         
-        // Xóa các Node cũ trên UI trước khi vẽ lại
         foreach (Transform child in mapContainerTransform)
         {
             Destroy(child.gameObject);

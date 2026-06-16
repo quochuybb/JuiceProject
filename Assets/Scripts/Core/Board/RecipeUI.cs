@@ -21,13 +21,33 @@ public class RecipeUI : MonoBehaviour
     private void Start()
     {
         buyButton.onClick.AddListener(OnBuyBtnClick);
-        status = RecipeStatus.BUY;
+        // Xóa dòng gán status = BUY ở đây vì SetUp đã xử lý
     }
     public void SetUp()
     {
         recipeName.text = recipeData.name;
         recipeDescription.text = recipeData.description;
         recipeCost.text = recipeData.recipeCost.ToString();
+
+        // Kiểm tra xem món đồ này đã nằm trong túi đồ hoặc đang được trang bị chưa
+        bool isEquipped = GameSession.recipeList.Contains(recipeData);
+        bool inInventory = GameSession.inventoryList.Contains(recipeData);
+
+        if (isEquipped)
+        {
+            status = RecipeStatus.EQUIPMENT; // Trong code cũ, EQUIPMENT có nghĩa là ĐANG trang bị (click để gỡ)
+            buyButton.GetComponentInChildren<TextMeshProUGUI>().text = "Unequip";
+        }
+        else if (inInventory)
+        {
+            status = RecipeStatus.UNEQUIPMENT; // Trong code cũ, UNEQUIPMENT có nghĩa là CHƯA trang bị (click để lắp)
+            buyButton.GetComponentInChildren<TextMeshProUGUI>().text = "Equip";
+        }
+        else
+        {
+            status = RecipeStatus.BUY;
+            buyButton.GetComponentInChildren<TextMeshProUGUI>().text = "Buy";
+        }
     }
 
     private void OnBuyBtnClick()

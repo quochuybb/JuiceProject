@@ -111,6 +111,13 @@ public class MainMenuManager : MonoBehaviour
         if (SoundManager.Instance != null)
             SoundManager.Instance.PlayUIClick();
         Debug.Log("Open Shop");
+        
+        // Cập nhật lại giao diện của các nút mua đồ dựa trên Data mới nhất tải từ Server
+        if (RecipeManager.instance != null)
+        {
+            RecipeManager.instance.RefreshAllRecipes();
+        }
+
         SlidePanel(mainMenuPanel, shopPanel);
     }
 
