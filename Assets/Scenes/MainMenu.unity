@@ -4115,6 +4115,18 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+      - m_Target: {fileID: 748449051861818876, guid: ec6a8cf5b36613f47a1882435fb653e1, type: 3}
+        m_TargetAssemblyTypeName: NetworkPlayer, Game.Shared
+        m_MethodName: SaveProgress
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1429213610
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4656,8 +4668,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 96a60869889d4344b8fb4ac0da032370, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  recipePrefab: {fileID: 5759041263795392359, guid: 59c114b6a4db4ae42be17a310a804707, type: 3}
-  shopContainer: {fileID: 1831715199}
 --- !u!4 &1658668752
 Transform:
   m_ObjectHideFlags: 0
