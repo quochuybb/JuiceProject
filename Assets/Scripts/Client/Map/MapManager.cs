@@ -177,7 +177,7 @@ public class MapManager : MonoBehaviour
             GameModeType.GemMission, 
             GameModeType.RecipeCrafting 
         };
-        List<float> gameModeWeights = new List<float> { 0.6f, 0.2f, 0.2f };
+        List<float> gameModeWeights = new List<float> { 0.7f, 0.2f, 0.1f };
         
         for (int layerIndex = 0; layerIndex < currentChapterData.layers.Count; layerIndex++)
         {

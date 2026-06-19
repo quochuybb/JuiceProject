@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using Unity.Netcode;
 
-public class NetworkPlayer : NetworkBehaviour
+public partial class NetworkPlayer : NetworkBehaviour
 {
     public static NetworkPlayer LocalInstance { get; private set; }
 

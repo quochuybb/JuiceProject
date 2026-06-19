@@ -28,6 +28,9 @@ public class RecipeUI : MonoBehaviour
         recipeName.text = recipeData.name;
         recipeDescription.text = recipeData.description;
         recipeCost.text = recipeData.recipeCost.ToString();
+        
+        // Mở khóa lại nút (trường hợp trước đó bị khóa vì đang đợi Server)
+        buyButton.interactable = true;
 
         // Kiểm tra xem món đồ này đã nằm trong túi đồ hoặc đang được trang bị chưa
         bool isEquipped = GameSession.recipeList.Contains(recipeData);
@@ -52,7 +55,7 @@ public class RecipeUI : MonoBehaviour
 
     private void OnBuyBtnClick()
     {
-        if (GameSession.recipeList.Count == 5)
+        if (GameSession.recipeList.Count >= 5)
         {
             GameSession.isFull = true;
         }
@@ -60,26 +63,15 @@ public class RecipeUI : MonoBehaviour
         {
             GameSession.isFull = false;
         }
+        
         if (status == RecipeStatus.BUY)
         {
-            if (GameSession.currentCoin >= recipeData.recipeCost)
-            {
-                ShopManager.Instance.BuyRecipe(recipeData);
-                if (!GameSession.isFull)
-                {
-                    buyButton.GetComponentInChildren<TextMeshProUGUI>().text = "Unequip";
-                    status = RecipeStatus.EQUIPMENT;
-                }
-                else 
-                {
-                    buyButton.GetComponentInChildren<TextMeshProUGUI>().text = "Equip";
-                    status = RecipeStatus.UNEQUIPMENT;
-                }
-            }
-            else
-            {
-                Debug.Log("Not enough coins to buy " + recipeData.recipeName);    
-            }
+            // Báo cho ShopManager gửi lệnh lên Server
+            ShopManager.Instance.BuyRecipe(recipeData);
+            
+            // Khóa nút tạm thời trong lúc chờ Server trả lời
+            buyButton.interactable = false;
+            buyButton.GetComponentInChildren<TextMeshProUGUI>().text = "...";
         }
         else if (status == RecipeStatus.EQUIPMENT)
         {
