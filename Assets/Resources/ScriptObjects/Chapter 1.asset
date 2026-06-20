@@ -25,23 +25,19 @@ MonoBehaviour:
     maxNodes: 4
     nodeWeights:
     - nodeType: 0
-      weightRatio: 0.6
+      weightRatio: 0.8
     - nodeType: 1
-      weightRatio: 0.1
-    - nodeType: 2
-      weightRatio: 0.3
+      weightRatio: 0.2
   - minNodes: 3
     maxNodes: 4
     nodeWeights:
     - nodeType: 0
-      weightRatio: 0.6
+      weightRatio: 0.8
     - nodeType: 1
-      weightRatio: 0.1
-    - nodeType: 2
-      weightRatio: 0.3
+      weightRatio: 0.2
   - minNodes: 1
     maxNodes: 1
     nodeWeights:
-    - nodeType: 3
+    - nodeType: 1
       weightRatio: 1
   availableRecipeIDsInShop: []

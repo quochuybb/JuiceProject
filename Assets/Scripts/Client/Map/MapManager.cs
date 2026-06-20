@@ -25,7 +25,7 @@ public class MapManager : MonoBehaviour
         }
         Instance = this;
     }
-
+    
     public void ReloadCurrentMap()
     {
         if (GameSession.CurrentChapterData == null) return;
@@ -140,6 +140,9 @@ public class MapManager : MonoBehaviour
     
         contentRectTransform.sizeDelta = new Vector2(contentRectTransform.sizeDelta.x, totalHeight);
 
+        // 1. Tính toán và lưu vị trí của tất cả các node
+        Dictionary<MapNodeData, Vector2> nodePositions = new Dictionary<MapNodeData, Vector2>();
+        
         for (int currentLayerIndex = 0; currentLayerIndex < logicMap.Count; currentLayerIndex++)
         {
             List<MapNodeData> currentLayerNodes = logicMap[currentLayerIndex];
@@ -147,17 +150,71 @@ public class MapManager : MonoBehaviour
 
             foreach (var nodeData in currentLayerNodes)
             {
+                float posY = -(currentLayerIndex * layerSpacing) - topPadding; 
+                float posX = (nodeData.nodeIndexInLayer - (totalNodesInLayer - 1) / 2.0f) * nodeSpacing;
+                nodePositions[nodeData] = new Vector2(posX, posY);
+            }
+        }
+
+        // 2. Vẽ các đường nối (Draw Lines) trước để nó nằm dưới các Node Button
+        foreach (var layer in logicMap)
+        {
+            foreach (var node in layer)
+            {
+                if (node.outgoingEdges != null && nodePositions.ContainsKey(node))
+                {
+                    Vector2 startPos = nodePositions[node];
+                    foreach (var nextNode in node.outgoingEdges)
+                    {
+                        if (nodePositions.ContainsKey(nextNode))
+                        {
+                            Vector2 endPos = nodePositions[nextNode];
+                            DrawLineUI(startPos, endPos);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Khởi tạo và đặt vị trí các Node Buttons
+        for (int currentLayerIndex = 0; currentLayerIndex < logicMap.Count; currentLayerIndex++)
+        {
+            List<MapNodeData> currentLayerNodes = logicMap[currentLayerIndex];
+
+            foreach (var nodeData in currentLayerNodes)
+            {
                 GameObject newButtonGO = Instantiate(nodePrefab, mapContainerTransform);
                 NodeUIButton uiScript = newButtonGO.GetComponent<NodeUIButton>();
                 uiScript.Setup(nodeData);
 
-                float posY = -(currentLayerIndex * layerSpacing) - topPadding; 
-                float posX = (nodeData.nodeIndexInLayer - (totalNodesInLayer - 1) / 2.0f) * nodeSpacing;
-
                 RectTransform rect = newButtonGO.GetComponent<RectTransform>();
-                rect.anchoredPosition = new Vector2(posX, posY);
+                rect.anchoredPosition = nodePositions[nodeData];
             }
         }
+    }
+
+    private void DrawLineUI(Vector2 startPos, Vector2 endPos)
+    {
+        GameObject lineObj = new GameObject("Line_Connection", typeof(Image));
+        lineObj.transform.SetParent(mapContainerTransform, false);
+        
+        Image img = lineObj.GetComponent<Image>();
+        img.color = new Color(0.3f, 0.3f, 0.3f, 0.8f); // Màu xám mờ để phân biệt với nút
+        img.raycastTarget = false; // Tắt raycast để không block các lượt click chuột
+        
+        RectTransform rect = lineObj.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 1f); // Giống với nodePrefab
+        rect.anchorMax = new Vector2(0.5f, 1f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        
+        Vector2 dir = endPos - startPos;
+        float distance = dir.magnitude;
+        float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
+        
+        // Độ dày của vạch kẻ (height) là 15, chiều dài (width) là khoảng cách giữa 2 điểm
+        rect.sizeDelta = new Vector2(distance, 15f); 
+        rect.anchoredPosition = startPos + dir / 2f; // Vị trí điểm giữa
+        rect.localRotation = Quaternion.Euler(0, 0, angle); // Xoay hướng
     }
 
     private List<List<MapNodeData>> CreateLogicMapData()
