@@ -48,6 +48,7 @@ public class ServerShopManager : MonoBehaviour
             return;
         }
 
+        /* TÍNH NĂNG ĐÃ CHUYỂN QUA WEB API
         GameSessionData sessionData = DatabaseManager.Instance.LoadProgress(username);
         if (sessionData == null)
         {
@@ -85,5 +86,6 @@ public class ServerShopManager : MonoBehaviour
             Debug.LogWarning($"[ServerShop] {username} KHÔNG ĐỦ TIỀN mua {recipeToBuy.recipeName}");
             player.RpcBuyRecipeResultClientRpc(false, recipeId, sessionData.currentCoin);
         }
+        */
     }
 }

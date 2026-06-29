@@ -679,7 +679,29 @@ public class BoardManager : MonoBehaviour
         float totalPrize = prizeBase * GameSession.CurrentChapter + GameSession.CurrentLayer;
         GameSession.currentCoin += totalPrize;
         prizeText.text = "+" + totalPrize;
-
+        
+        // --- LƯU TIẾN TRÌNH LÊN WEB API ---
+        SaveProgressAfterWin();
+    }
+    
+    private async void SaveProgressAfterWin()
+    {
+        if (WebClientManager.Instance != null)
+        {
+            GameSessionData data = new GameSessionData();
+            data.PackFromGameSession();
+            string jsonPayload = Newtonsoft.Json.JsonConvert.SerializeObject(data);
+            
+            bool saveSuccess = await WebClientManager.Instance.SaveProgressAsync(jsonPayload);
+            if (saveSuccess)
+            {
+                Debug.Log("[BoardManager] Đã lưu Vàng và Tiến trình bản đồ lên Server thành công!");
+            }
+            else
+            {
+                Debug.LogError("[BoardManager] Lỗi khi lưu tiến trình!");
+            }
+        }
     }
     
     public void RetryCurrentLevel()

@@ -1,23 +1,25 @@
-using UnityEngine;
+using System;
 
 public class AccountUser
 {
-    public string Username { get; set; }
-    
-    public string PasswordHash { get; set; }
-    
-    public int MMR { get; set; }
-    
-    public string SessionDataJSON { get; set; }
+    public int id { get; set; }
+    public string username { get; set; }
+    public string password_hash { get; set; }
+    public int gold { get; set; }
+    public int gem { get; set; }
+    public int mmr { get; set; }
+    public string session_data { get; set; }
+    public DateTime created_at { get; set; }
 
     public AccountUser() { }
     
-    public AccountUser(string username, string passwordHash, string displayName = "", string sessionDataJSON = "") 
+    public AccountUser(string _username, string _passwordHash, string _sessionData = "") 
     { 
-        Username = username; 
-        PasswordHash = passwordHash;
-        MMR = 1000;
-        SessionDataJSON = sessionDataJSON;
-
+        username = _username; 
+        password_hash = _passwordHash;
+        gold = 0;
+        gem = 0;
+        mmr = 1000;
+        session_data = _sessionData;
     }
 }

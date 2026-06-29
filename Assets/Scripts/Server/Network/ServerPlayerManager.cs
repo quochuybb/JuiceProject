@@ -23,16 +23,18 @@ public static class ServerPlayerManager
         {
             player.PlayerUsername.Value = username;
             
+            /* ĐÃ CHUYỂN SANG WEB API
             var accountInfo = DatabaseManager.Instance.GetAccount(username);
             if (accountInfo != null)
             {
-                player.PlayerMMR.Value = accountInfo.MMR;
+                player.PlayerMMR.Value = accountInfo.mmr;
                 
-                if (!string.IsNullOrEmpty(accountInfo.SessionDataJSON))
+                if (!string.IsNullOrEmpty(accountInfo.session_data))
                 {
-                    player.RpcLoadSessionClientRpc(accountInfo.SessionDataJSON);
+                    player.RpcLoadSessionClientRpc(accountInfo.session_data);
                 }
             }
+            */
         }
         
         ServerMatchmaker.Instance.RegisterPlayer(player);
@@ -57,9 +59,9 @@ public static class ServerPlayerManager
     {
         try
         {
-            Debug.Log("Save");
-            var data = Newtonsoft.Json.JsonConvert.DeserializeObject<GameSessionData>(sessionJson);
-            DatabaseManager.Instance.SaveProgress(player.PlayerUsername.Value.ToString(), data);
+            Debug.Log("Save is disabled on Server. UnityWebRequest is now used on Client.");
+            // var data = Newtonsoft.Json.JsonConvert.DeserializeObject<GameSessionData>(sessionJson);
+            // DatabaseManager.Instance.SaveProgress(player.PlayerUsername.Value.ToString(), data);
         }
         catch (Exception e)
         {

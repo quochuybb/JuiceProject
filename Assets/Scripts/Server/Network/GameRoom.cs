@@ -29,9 +29,9 @@ public class GameRoom : NetworkBehaviour
         int newWinnerMMR = winner.PlayerMMR.Value + 25;
         int newLoserMMR = Mathf.Max(0, loser.PlayerMMR.Value - 25);
 
-        // Lưu vào Database
-        DatabaseManager.Instance.UpdateMMR(winner.PlayerUsername.Value.ToString(), newWinnerMMR);
-        DatabaseManager.Instance.UpdateMMR(loser.PlayerUsername.Value.ToString(), newLoserMMR);
+        // Lưu vào Database (Đã chuyển sang Web API - Sẽ xử lý ở Phase 4)
+        // DatabaseManager.Instance.UpdateMMR(winner.PlayerUsername.Value.ToString(), newWinnerMMR);
+        // DatabaseManager.Instance.UpdateMMR(loser.PlayerUsername.Value.ToString(), newLoserMMR);
 
         // Cập nhật lại NetworkVariable cho 2 người chơi
         winner.PlayerMMR.Value = newWinnerMMR;

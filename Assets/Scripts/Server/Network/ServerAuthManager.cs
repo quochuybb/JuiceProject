@@ -44,44 +44,23 @@ public class ServerAuthManager : MonoBehaviour
             return;
         }
 
-        string credentials = Encoding.UTF8.GetString(payload);
-        string[] parts = credentials.Split(':');
-        
-        if (parts.Length != 2)
-        {
-            Debug.LogWarning("[ServerAuth] Format đăng nhập không hợp lệ.");
-            response.Reason = "Invalid credential format.";
-            return;
-        }
+        string token = Encoding.UTF8.GetString(payload);
 
-        string username = parts[0];
-        string password = parts[1];
-
-        // 3. Nếu Server muốn tạo tài khoản mới ngay lúc đăng nhập (Auto-register nếu chưa có)
-        // Hoặc kiểm tra mật khẩu nếu đã có
-        if (DatabaseManager.Instance.VerifyAccount(username, password, out AccountUser user))
+        // 3. Giải mã và Xác thực JWT Token
+        if (JwtUtility.VerifyToken(token, out JwtPayload decodedPayload))
         {
+            string username = decodedPayload.username;
+
             // Đăng nhập thành công
             ClientUsernames[request.ClientNetworkId] = username;
-            Debug.Log($"[ServerAuth] Cho phép Client {request.ClientNetworkId} ({username}) tham gia.");
+            Debug.Log($"[ServerAuth] Xác thực JWT thành công! Cho phép Client {request.ClientNetworkId} ({username}) tham gia.");
             response.Approved = true;
             response.CreatePlayerObject = true; // Tạo GameObject cho người chơi
         }
         else
         {
-            // Thử đăng ký tài khoản mới nếu chưa tồn tại
-            if (DatabaseManager.Instance.CreateAccount(username, password))
-            {
-                ClientUsernames[request.ClientNetworkId] = username;
-                Debug.Log($"[ServerAuth] Tự động đăng ký và cho phép {username} tham gia.");
-                response.Approved = true;
-                response.CreatePlayerObject = true;
-            }
-            else
-            {
-                Debug.LogWarning($"[ServerAuth] Từ chối kết nối từ {request.ClientNetworkId} - Sai mật khẩu.");
-                response.Reason = "Invalid password.";
-            }
+            Debug.LogWarning($"[ServerAuth] Từ chối kết nối từ {request.ClientNetworkId} - Token không hợp lệ.");
+            response.Reason = "Invalid JWT Token.";
         }
     }
 }

@@ -32,9 +32,9 @@ public class MainMenuManager : MonoBehaviour
     {
         coin.text = GameSession.currentCoin.ToString();
 
-        // Nếu người chơi đã đăng nhập rồi (quay lại từ scene Game),
+        // Nếu người chơi đã có Token rồi (quay lại từ scene Game),
         // bỏ qua màn hình SignIn và hiển thị thẳng Map Panel
-        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient)
+        if (WebClientManager.Instance != null && !string.IsNullOrEmpty(WebClientManager.Instance.CurrentToken))
         {
             signInPanel.anchoredPosition = rightOffScreen;
             mainMenuPanel.anchoredPosition = rightOffScreen;
@@ -76,7 +76,7 @@ public class MainMenuManager : MonoBehaviour
     {
         ConnectionManager.Instance.StartDedicatedServer();
     }
-    public void OnSignIn()
+    public async void OnSignIn()
     {
         if (username.text == "")
         {
@@ -87,8 +87,65 @@ public class MainMenuManager : MonoBehaviour
         {
             password.text = "admin123";
         }
-        ConnectionManager.Instance.StartClient(username.text, password.text);
-        ;
+
+        // Đợi Web API xử lý Đăng nhập
+        bool isSuccess = await WebClientManager.Instance.LoginAsync(username.text, password.text);
+        
+        // Nếu Đăng nhập thất bại (Có thể do chưa có tài khoản)
+        if (!isSuccess)
+        {
+            Debug.Log("[MainMenu] Đăng nhập thất bại, đang thử Tự động Đăng ký tài khoản mới...");
+            bool isRegisterSuccess = await WebClientManager.Instance.RegisterAsync(username.text, password.text);
+            
+            if (isRegisterSuccess)
+            {
+                Debug.Log("[MainMenu] Đăng ký thành công! Tiến hành đăng nhập lại...");
+                // Đăng nhập lại lần nữa
+                isSuccess = await WebClientManager.Instance.LoginAsync(username.text, password.text);
+            }
+            else
+            {
+                Debug.LogError("[MainMenu] Tự động đăng ký thất bại. Xin vui lòng kiểm tra lại mạng hoặc tài khoản.");
+                return;
+            }
+        }
+
+        // Nếu API trả về true (Đăng nhập đúng)
+        if (isSuccess) 
+        {
+            // Cập nhật Vàng/Ngọc hiển thị trên UI từ dữ liệu mới lấy về
+            GameSession.currentCoin = WebClientManager.Instance.CurrentUser.gold;
+            UpdateCoinDisplay();
+
+            // Phục hồi dữ liệu túi đồ (Inventory, Recipe, Map) từ JSON
+            string sessionDataJson = WebClientManager.Instance.CurrentUser.session_data;
+            if (!string.IsNullOrEmpty(sessionDataJson))
+            {
+                try
+                {
+                    // Tải toàn bộ danh sách đồ trong game để tra cứu ID
+                    RecipeData[] allRecipeDatas = UnityEngine.Resources.LoadAll<RecipeData>("ScriptObjects/Recipes");
+                    System.Collections.Generic.Dictionary<int, RecipeData> recipeDict = new System.Collections.Generic.Dictionary<int, RecipeData>();
+                    foreach (var r in allRecipeDatas)
+                    {
+                        recipeDict[r.recipeID] = r;
+                    }
+
+                    // Giải nén JSON vào GameSession
+                    GameSessionData data = Newtonsoft.Json.JsonConvert.DeserializeObject<GameSessionData>(sessionDataJson);
+                    data.UnpackToGameSession(recipeDict);
+                    
+                    Debug.Log($"[MainMenu] Phục hồi túi đồ thành công! Túi đồ: {GameSession.inventoryList.Count} món, Đang mặc: {GameSession.recipeList.Count} món.");
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogError("[MainMenu] Lỗi giải mã Session Data: " + ex.Message);
+                }
+            }
+
+            // Trượt màn hình sang Main Menu
+            OnSignInSuccess();
+        }
     }
     public void OnSignInSuccess()
     {

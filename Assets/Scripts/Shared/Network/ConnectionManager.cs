@@ -87,20 +87,20 @@ public class ConnectionManager : MonoBehaviour
         NetworkManager.Singleton.StartServer();
     }
 
-    public void StartHost(string username, string password)
+    public void StartHost(string token)
     {
         var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
         transport.SetConnectionData(ServerIP, ServerPort);
         
         NetworkManager.Singleton.NetworkConfig.ConnectionApproval = true;
         
-        SetClientAuthData(username, password);
+        SetClientAuthData(token);
 
         Debug.Log($"[ConnectionManager] Starting Host (Server + Client)...");
         NetworkManager.Singleton.StartHost();
     }
 
-    public void StartClient(string username, string password)
+    public void StartClient(string token)
     {
         var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
         transport.SetConnectionData(ServerIP, ServerPort);
@@ -108,16 +108,15 @@ public class ConnectionManager : MonoBehaviour
         // Bắt buộc bật Kiểm duyệt ở cả Client để đồng bộ cấu hình (NetworkConfig) với Server
         NetworkManager.Singleton.NetworkConfig.ConnectionApproval = true;
         
-        SetClientAuthData(username, password);
+        SetClientAuthData(token);
 
-        Debug.Log($"[ConnectionManager] Connecting to Server {ServerIP}:{ServerPort} as {username}...");
+        Debug.Log($"[ConnectionManager] Connecting to Server {ServerIP}:{ServerPort} with JWT Token...");
         NetworkManager.Singleton.StartClient();
     }
 
-    private void SetClientAuthData(string username, string password)
+    private void SetClientAuthData(string token)
     {
-        string payload = $"{username}:{password}";
-        byte[] payloadBytes = Encoding.UTF8.GetBytes(payload);
+        byte[] payloadBytes = Encoding.UTF8.GetBytes(token);
         NetworkManager.Singleton.NetworkConfig.ConnectionData = payloadBytes;
     }
 

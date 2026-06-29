@@ -70,29 +70,80 @@ public class ShopManager : MonoBehaviour
         }
     }
 
-    public void BuyRecipe(RecipeData recipe)
+    public async void BuyRecipe(RecipeData recipe)
     {
-        // GameSession.currentCoin -= recipe.recipeCost;
-        // if (GameSession.recipeList.Count < 5)
-        // {
-        //     Debug.Log("Have enough slot equip");
-        //     GameSession.recipeList.Add(recipe);
-        //     GameSession.inventoryList.Add(recipe);
-        // }
-        // else
-        // {
-        //     Debug.Log("Not have enough slot equip");
-        //     GameSession.inventoryList.Add(recipe);
-        // }
-        NetworkPlayer.LocalInstance.CmdBuyRecipeServerRpc(recipe.recipeID);
+        // 1. Kiểm tra có đủ vàng không
+        if (GameSession.currentCoin >= recipe.recipeCost)
+        {
+            // Trừ vàng
+            GameSession.currentCoin -= recipe.recipeCost;
+            
+            // 2. Thêm vào túi đồ (Inventory)
+            GameSession.inventoryList.Add(recipe);
 
+            // 3. Nếu khay trang bị (Equip) chưa đầy 5 món thì tự động mặc luôn
+            if (GameSession.recipeList.Count < 5)
+            {
+                Debug.Log("[ShopClient] Còn chỗ trống! Tự động trang bị món đồ này.");
+                GameSession.recipeList.Add(recipe);
+            }
+            else
+            {
+                Debug.Log("[ShopClient] Hết chỗ trang bị! Chỉ cất vào túi.");
+            }
+
+            // 4. Lưu dữ liệu lên Web API
+            GameSessionData data = new GameSessionData();
+            data.PackFromGameSession();
+            string jsonPayload = Newtonsoft.Json.JsonConvert.SerializeObject(data);
+            
+            bool saveSuccess = await WebClientManager.Instance.SaveProgressAsync(jsonPayload);
+            
+            if (saveSuccess)
+            {
+                Debug.Log($"[ShopClient] Đã mua thành công {recipe.recipeName}!");
+                // Cập nhật lại UI tiền vàng ở Main Menu
+                if (MainMenuManager.Instance != null)
+                {
+                    MainMenuManager.Instance.UpdateCoinDisplay();
+                }
+                RecipeManager.instance.RefreshAllRecipes();
+            }
+            else
+            {
+                Debug.LogError("[ShopClient] Lỗi lưu game khi mua đồ. Hoàn tác...");
+                // Hoàn tác nếu Server lỗi
+                GameSession.currentCoin += recipe.recipeCost;
+                GameSession.inventoryList.Remove(recipe);
+                GameSession.recipeList.Remove(recipe);
+                RecipeManager.instance.RefreshAllRecipes();
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[ShopClient] Mua thất bại! Không đủ vàng.");
+            // Cập nhật lại UI đề phòng lỗi hiển thị
+            RecipeManager.instance.RefreshAllRecipes();
+        }
     }
-    public void UnequipRecipe(RecipeData recipe)
+
+    public async void UnequipRecipe(RecipeData recipe)
     {
         GameSession.recipeList.Remove(recipe);
+        await SaveEquipState();
     }
-    public void EquipRecipe(RecipeData recipe)
+    
+    public async void EquipRecipe(RecipeData recipe)
     {
         GameSession.recipeList.Add(recipe);
+        await SaveEquipState();
+    }
+
+    private async System.Threading.Tasks.Task SaveEquipState()
+    {
+        GameSessionData data = new GameSessionData();
+        data.PackFromGameSession();
+        string jsonPayload = Newtonsoft.Json.JsonConvert.SerializeObject(data);
+        await WebClientManager.Instance.SaveProgressAsync(jsonPayload);
     }
 }

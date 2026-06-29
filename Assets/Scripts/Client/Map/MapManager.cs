@@ -45,7 +45,7 @@ public class MapManager : MonoBehaviour
     {
         MainMenuManager.Instance.OnPlayChapterButton();
         
-        if (GameSession.CurrentChapterData == chapter && GameSession.CurrentMapSeed != 0)
+        if ((GameSession.CurrentChapterData == chapter || GameSession.CurrentChapterID == chapter.chapterID) && GameSession.CurrentMapSeed != 0)
         {
             currentSeed = GameSession.CurrentMapSeed;
         }

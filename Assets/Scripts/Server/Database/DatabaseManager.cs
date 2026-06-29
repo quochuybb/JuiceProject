@@ -1,3 +1,4 @@
+/*
 using UnityEngine;
 using Npgsql;
 using Dapper;
@@ -13,7 +14,7 @@ public class DatabaseManager : MonoBehaviour
 
     [Header("PostgreSQL Settings")]
     public string Host = "localhost";
-    public int Port = 5432;
+    public int Port = 5051;
     public string Username = "admin";
     public string Password = "adminpassword123";
     public string Database = "juicematch_db";
@@ -48,11 +49,15 @@ public class DatabaseManager : MonoBehaviour
             
             // Tạo bảng nếu chưa có (PostgreSQL syntax)
             string createTableQuery = @"
-                CREATE TABLE IF NOT EXISTS AccountUser (
-                    Username VARCHAR(255) PRIMARY KEY,
-                    PasswordHash VARCHAR(255) NOT NULL,
-                    MMR INT DEFAULT 1000,
-                    SessionDataJSON TEXT
+                CREATE TABLE IF NOT EXISTS users (
+                    id SERIAL PRIMARY KEY,
+                    username VARCHAR(50) UNIQUE NOT NULL,
+                    password_hash VARCHAR(255) NOT NULL,
+                    gold INT DEFAULT 0,
+                    gem INT DEFAULT 0,
+                    mmr INT DEFAULT 1000,
+                    session_data TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );";
             
             db.Execute(createTableQuery);
@@ -65,7 +70,7 @@ public class DatabaseManager : MonoBehaviour
     {
         using (var db = GetConnection())
         {
-            var existingUser = db.QueryFirstOrDefault<AccountUser>("SELECT * FROM AccountUser WHERE Username = @Username", new { Username = username });
+            var existingUser = db.QueryFirstOrDefault<AccountUser>("SELECT * FROM users WHERE username = @Username", new { Username = username });
             
             if (existingUser != null)
             {
@@ -76,14 +81,13 @@ public class DatabaseManager : MonoBehaviour
             string hash = HashPassword(password);
             
             string insertQuery = @"
-                INSERT INTO AccountUser (Username, PasswordHash, MMR, SessionDataJSON) 
-                VALUES (@Username, @PasswordHash, @MMR, @SessionDataJSON)";
+                INSERT INTO users (username, password_hash, gold, gem, mmr, session_data) 
+                VALUES (@Username, @PasswordHash, 0, 0, 1000, @SessionData)";
                 
             db.Execute(insertQuery, new { 
                 Username = username, 
                 PasswordHash = hash, 
-                MMR = 1000, 
-                SessionDataJSON = "" 
+                SessionData = "" 
             });
 
             Debug.Log($"[Database] Đã tạo tài khoản thành công: {username}");
@@ -95,7 +99,7 @@ public class DatabaseManager : MonoBehaviour
     {
         using (var db = GetConnection())
         {
-            return db.QueryFirstOrDefault<AccountUser>("SELECT * FROM AccountUser WHERE Username = @Username", new { Username = username });
+            return db.QueryFirstOrDefault<AccountUser>("SELECT * FROM users WHERE username = @Username", new { Username = username });
         }
     }
 
@@ -110,7 +114,7 @@ public class DatabaseManager : MonoBehaviour
         }
 
         string hash = HashPassword(password);
-        if (user.PasswordHash == hash)
+        if (user.password_hash == hash)
         {
             Debug.Log($"[Database] Đăng nhập thành công: {username}");
             return true;
@@ -124,7 +128,7 @@ public class DatabaseManager : MonoBehaviour
     {
         using (var db = GetConnection())
         {
-            db.Execute("UPDATE AccountUser SET MMR = @MMR WHERE Username = @Username", new { MMR = newMMR, Username = username });
+            db.Execute("UPDATE users SET mmr = @MMR WHERE username = @Username", new { MMR = newMMR, Username = username });
         }
     }
 
@@ -136,7 +140,7 @@ public class DatabaseManager : MonoBehaviour
         string json = JsonConvert.SerializeObject(sessionData);
         using (var db = GetConnection())
         {
-            db.Execute("UPDATE AccountUser SET SessionDataJSON = @JSON WHERE Username = @Username", new { JSON = json, Username = username });
+            db.Execute("UPDATE users SET session_data = @JSON WHERE username = @Username", new { JSON = json, Username = username });
             Debug.Log($"[Database] Đã lưu tiến trình cho {username}");
         }
     }
@@ -144,11 +148,11 @@ public class DatabaseManager : MonoBehaviour
     public GameSessionData LoadProgress(string username)
     {
         var user = GetAccount(username);
-        if (user != null && !string.IsNullOrEmpty(user.SessionDataJSON))
+        if (user != null && !string.IsNullOrEmpty(user.session_data))
         {
             try
             {
-                return JsonConvert.DeserializeObject<GameSessionData>(user.SessionDataJSON);
+                return JsonConvert.DeserializeObject<GameSessionData>(user.session_data);
             }
             catch (System.Exception e)
             {
@@ -172,4 +176,4 @@ public class DatabaseManager : MonoBehaviour
             return builder.ToString();
         }
     }
-}
+}*/
