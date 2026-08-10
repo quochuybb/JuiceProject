@@ -21,6 +21,12 @@ public partial class NetworkPlayer : NetworkBehaviour
     public static event Action<NetworkPlayer> OnServerMatchmakingCanceled;
     public static event Action<NetworkPlayer, string> OnServerSaveProgressRequested;
 
+    // --- EVENTS CHO PVP LOBBY ---
+    public static event Action<int> OnClientGameStarted;
+    public static event Action<int, int> OnClientHPUpdated;
+    public static event Action<bool, int> OnClientMatchEnded;
+    public static event Action<ulong, int> OnServerAttackReceived;
+
     public override void OnNetworkSpawn()
     {
         DontDestroyOnLoad(gameObject);
@@ -96,6 +102,44 @@ public partial class NetworkPlayer : NetworkBehaviour
         if (IsOwner)
         {
             Debug.Log($"[Client] ĐÃ TÌM THẤY TRẬN! Đối thủ: {opponentName} (MMR: {opponentMMR})");
+        }
+    }
+
+    // --- CÁC HÀM RPC DÀNH CHO PVP BATTLE ---
+
+    [ClientRpc]
+    public void RpcStartGameClientRpc(int boardSeed, ClientRpcParams clientRpcParams = default)
+    {
+        if (IsOwner)
+        {
+            Debug.Log($"[Client] BẮT ĐẦU TRẬN ĐẤU! Board Seed: {boardSeed}");
+            OnClientGameStarted?.Invoke(boardSeed);
+        }
+    }
+
+    [ServerRpc]
+    public void CmdAttackServerRpc(int damageAmount)
+    {
+        // Nhận lệnh chém từ Client, bắn Event ra ngoài để ServerMatchManager (ở project Server) bắt lấy
+        // Cách này giúp tránh lỗi tham chiếu vòng (Circular Dependency) giữa Shared Assembly và Server Assembly
+        OnServerAttackReceived?.Invoke(OwnerClientId, damageAmount);
+    }
+
+    [ClientRpc]
+    public void RpcUpdateHPClientRpc(int myHP, int opponentHP, ClientRpcParams clientRpcParams = default)
+    {
+        if (IsOwner)
+        {
+            OnClientHPUpdated?.Invoke(myHP, opponentHP);
+        }
+    }
+
+    [ClientRpc]
+    public void RpcEndMatchClientRpc(bool isWinner, int newMmr, ClientRpcParams clientRpcParams = default)
+    {
+        if (IsOwner)
+        {
+            OnClientMatchEnded?.Invoke(isWinner, newMmr);
         }
     }
     

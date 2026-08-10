@@ -6,6 +6,7 @@ using Unity.Netcode;
 public class ServerAuthManager : MonoBehaviour
 {
     public static System.Collections.Generic.Dictionary<ulong, string> ClientUsernames = new System.Collections.Generic.Dictionary<ulong, string>();
+    public static System.Collections.Generic.Dictionary<ulong, string> ClientRoomIds = new System.Collections.Generic.Dictionary<ulong, string>();
 
     public static string GetUsernameForClient(ulong clientId)
     {
@@ -27,6 +28,8 @@ public class ServerAuthManager : MonoBehaviour
     {
         if (ClientUsernames.ContainsKey(clientId))
             ClientUsernames.Remove(clientId);
+        if (ClientRoomIds.ContainsKey(clientId))
+            ClientRoomIds.Remove(clientId);
     }
 
     private void ApprovalCheck(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
@@ -44,16 +47,29 @@ public class ServerAuthManager : MonoBehaviour
             return;
         }
 
-        string token = Encoding.UTF8.GetString(payload);
+        string rawPayload = Encoding.UTF8.GetString(payload);
+        string[] parts = rawPayload.Split('|');
+        
+        if (parts.Length < 2)
+        {
+            Debug.LogWarning("[ServerAuth] Payload sai định dạng (Thiếu RoomId hoặc Token).");
+            response.Reason = "Invalid Auth Payload Format.";
+            return;
+        }
+
+        string jwtToken = parts[0];
+        string roomId = parts[1];
 
         // 3. Giải mã và Xác thực JWT Token
-        if (JwtUtility.VerifyToken(token, out JwtPayload decodedPayload))
+        if (JwtUtility.VerifyToken(jwtToken, out JwtPayload decodedPayload))
         {
             string username = decodedPayload.username;
 
             // Đăng nhập thành công
             ClientUsernames[request.ClientNetworkId] = username;
-            Debug.Log($"[ServerAuth] Xác thực JWT thành công! Cho phép Client {request.ClientNetworkId} ({username}) tham gia.");
+            ClientRoomIds[request.ClientNetworkId] = roomId; // Lưu lại RoomId
+            
+            Debug.Log($"[ServerAuth] Xác thực JWT thành công! Client {request.ClientNetworkId} ({username}) tham gia phòng: {roomId}");
             response.Approved = true;
             response.CreatePlayerObject = true; // Tạo GameObject cho người chơi
         }

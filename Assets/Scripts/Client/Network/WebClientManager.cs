@@ -175,6 +175,51 @@ public class WebClientManager : MonoBehaviour
         }
     }
 
+    private async Task<bool> SendMatchCommandAsync(string endpoint)
+    {
+        if (string.IsNullOrEmpty(CurrentToken)) return false;
+    
+        string url = $"{BaseUrl}/match/{endpoint}";
+        using (UnityWebRequest request = CreatePostRequest(url, "{}"))
+        {
+            request.SetRequestHeader("Authorization", $"Bearer {CurrentToken}");
+            var op = request.SendWebRequest();
+            while (!op.isDone) await Task.Yield();
+            return request.result == UnityWebRequest.Result.Success;
+        }
+    }
+
+    public async Task<MatchStatusResponse> CheckStatusAsync()
+    {
+        if(string.IsNullOrEmpty(CurrentToken)) return null;
+
+        string url = $"{BaseUrl}/match/status";
+        using (UnityWebRequest request = UnityWebRequest.Get(url))
+        {
+            request.SetRequestHeader("Authorization", $"Bearer {CurrentToken}");
+            var op = request.SendWebRequest();
+            while (!op.isDone) await Task.Yield();
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                string json =  request.downloadHandler.text;
+                return  JsonConvert.DeserializeObject<MatchStatusResponse>(json);
+            }
+
+            return null;
+        }
+    }
+
+    // --- MATCHMAKING API ---
+    public async Task<bool> FindMatchAsync()
+    {
+        return await SendMatchCommandAsync("find");
+    }
+
+    public async Task<bool> CancelMatchAsync()
+    {
+        return await SendMatchCommandAsync("cancel");
+    }
+
     // --- Hàm tiện ích tạo UnityWebRequest POST ---
     private UnityWebRequest CreatePostRequest(string url, string jsonPayload)
     {
@@ -193,4 +238,16 @@ public class LoginResponse
 {
     public string token;
     public AccountUser user;
+}
+
+// Cấu trúc Data hứng kết quả Matchmaking
+[Serializable]
+public class MatchStatusResponse
+{
+    public string status; // "none", "searching", "match_found"
+    public string roomId;
+    public string serverIp;
+    public string serverPort;
+    public string opponentName;
+    public int opponentMMR;
 }

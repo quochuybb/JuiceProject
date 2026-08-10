@@ -22,6 +22,12 @@ public class MainMenuManager : MonoBehaviour
     [SerializeField] private TMP_InputField username;
     [SerializeField] private TMP_InputField password;
     [SerializeField] private TextMeshProUGUI coin;
+    [SerializeField] private RectTransform gameMatchPanel;
+    [SerializeField] private RectTransform rankingPanel;
+
+    [Header("Matchmaking UI")]
+    [SerializeField] private TextMeshProUGUI eloText;
+    [SerializeField] private TextMeshProUGUI versusText;
 
     private void Awake()
     {
@@ -31,6 +37,7 @@ public class MainMenuManager : MonoBehaviour
     private void Start()
     {
         coin.text = GameSession.currentCoin.ToString();
+        if (versusText != null) versusText.text = ""; // Trạng thái mặc định là rỗng
 
         // Nếu người chơi đã có Token rồi (quay lại từ scene Game),
         // bỏ qua màn hình SignIn và hiển thị thẳng Map Panel
@@ -69,6 +76,14 @@ public class MainMenuManager : MonoBehaviour
         if (coin != null)
         {
             coin.text = GameSession.currentCoin.ToString();
+        }
+    }
+
+    public void UpdateEloDisplay()
+    {
+        if (eloText != null && WebClientManager.Instance != null && WebClientManager.Instance.CurrentUser != null)
+        {
+            eloText.text = $"Elo Point: {WebClientManager.Instance.CurrentUser.mmr}";
         }
     }
 
@@ -116,6 +131,7 @@ public class MainMenuManager : MonoBehaviour
             // Cập nhật Vàng/Ngọc hiển thị trên UI từ dữ liệu mới lấy về
             GameSession.currentCoin = WebClientManager.Instance.CurrentUser.gold;
             UpdateCoinDisplay();
+            UpdateEloDisplay();
 
             // Phục hồi dữ liệu túi đồ (Inventory, Recipe, Map) từ JSON
             string sessionDataJson = WebClientManager.Instance.CurrentUser.session_data;
@@ -200,6 +216,22 @@ public class MainMenuManager : MonoBehaviour
         Debug.Log("Back to Main Menu");
         SlidePanel(shopPanel,mainMenuPanel);
     }
+    
+    public void OnRankingButton()
+    {
+        if (SoundManager.Instance != null)
+            SoundManager.Instance.PlayUIClick();
+        Debug.Log("Open Ranking");
+        SlidePanel(mainMenuPanel, rankingPanel);
+    }
+
+    public void OnBackMainMenuFromRankingButton()
+    {
+        if (SoundManager.Instance != null)
+            SoundManager.Instance.PlayUIClick();
+        Debug.Log("Back to Main Menu from Ranking");
+        SlidePanel(rankingPanel, mainMenuPanel);
+    }
     public void OnBackCampaignFromChapterButton()
     {
         if (SoundManager.Instance != null)
@@ -207,12 +239,71 @@ public class MainMenuManager : MonoBehaviour
         Debug.Log("Back to Main Menu");
         SlidePanel(mapPanel,campaignPanel);
     }
-    public void OnPlayMultiplayerButton()
+    public async void OnPlayMultiplayerButton()
     {
         if (SoundManager.Instance != null)
             SoundManager.Instance.PlayUIClick();
 
-        Debug.Log("Open Lobby");
+        Debug.Log("[Matchmaking] Đang gửi yêu cầu tìm trận...");
+        if (versusText != null)
+            versusText.text = "Matching...";
+            
+        bool success = await WebClientManager.Instance.FindMatchAsync();
+        
+        if (success)
+        {
+            Debug.Log("[Matchmaking] Đã vào hàng chờ thành công! Bắt đầu quét trạng thái...");
+            StartCoroutine(CheckMatchStatusRoutine());
+        }
+        else
+        {
+            if (versusText != null)
+                versusText.text = "Error connecting to server";
+                
+            // Chờ 2 giây rồi xóa chữ
+            await System.Threading.Tasks.Task.Delay(2000);
+            if (versusText != null)
+                versusText.text = "";
+        }
+    }
+
+    private System.Collections.IEnumerator CheckMatchStatusRoutine()
+    {
+        bool isMatched = false;
+        
+        while (!isMatched)
+        {
+            yield return new WaitForSeconds(2.0f); 
+            
+            var task = WebClientManager.Instance.CheckStatusAsync();
+            yield return new WaitUntil(() => task.IsCompleted);
+
+            var response = task.Result;
+            
+            if (response != null && response.status == "match_found")
+            {
+                isMatched = true; 
+                Debug.Log($"[Matchmaking] YAY! Đã tìm thấy trận! Room ID: {response.roomId}");
+                
+                // Đổi chữ "Matching..." thành tên đối thủ
+                if (versusText != null)
+                    versusText.text = $"{response.opponentName}";
+
+                // TRƯỢT SANG MÀN HÌNH ĐẤU (gameMatchPanel) TỪ MÀN HÌNH RANKING
+                SlidePanel(rankingPanel, gameMatchPanel);
+
+                // Chờ 2 giây để người chơi xem hoạt ảnh trượt và nhìn thấy tên đối thủ rồi mới kết nối
+                yield return new WaitForSeconds(2.0f);
+
+                // Kết nối vào Server Game bằng chuỗi Token + "|" + roomId
+                string authPayload = $"{WebClientManager.Instance.CurrentToken}|{response.roomId}";
+                ConnectionManager.Instance.StartClient(authPayload);
+            }
+            else
+            {
+                Debug.Log("[Matchmaking] Vẫn đang tìm kiếm...");
+            }
+        }
     }
     public void OnSettingButton()
     {

@@ -114,7 +114,7 @@ public class ConnectionManager : MonoBehaviour
         NetworkManager.Singleton.StartClient();
     }
 
-    private void SetClientAuthData(string token)
+    public void SetClientAuthData(string token)
     {
         byte[] payloadBytes = Encoding.UTF8.GetBytes(token);
         NetworkManager.Singleton.NetworkConfig.ConnectionData = payloadBytes;

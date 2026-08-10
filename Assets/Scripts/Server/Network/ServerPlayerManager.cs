@@ -9,8 +9,6 @@ public static class ServerPlayerManager
     {
         NetworkPlayer.OnServerPlayerSpawned += HandlePlayerSpawned;
         NetworkPlayer.OnServerPlayerDespawned += HandlePlayerDespawned;
-        NetworkPlayer.OnServerMatchmakingRequested += HandleMatchmakingRequested;
-        NetworkPlayer.OnServerMatchmakingCanceled += HandleMatchmakingCanceled;
         NetworkPlayer.OnServerSaveProgressRequested += HandleSaveProgress;
     }
 
@@ -22,46 +20,21 @@ public static class ServerPlayerManager
         if (!string.IsNullOrEmpty(username))
         {
             player.PlayerUsername.Value = username;
-            
-            /* ĐÃ CHUYỂN SANG WEB API
-            var accountInfo = DatabaseManager.Instance.GetAccount(username);
-            if (accountInfo != null)
-            {
-                player.PlayerMMR.Value = accountInfo.mmr;
-                
-                if (!string.IsNullOrEmpty(accountInfo.session_data))
-                {
-                    player.RpcLoadSessionClientRpc(accountInfo.session_data);
-                }
-            }
-            */
         }
         
-        ServerMatchmaker.Instance.RegisterPlayer(player);
+        // [MICROSERVICES] Không cần gọi Database hay Matchmaker ở đây nữa
+        // Mọi thứ đã được NodeJS xử lý!
     }
-
     private static void HandlePlayerDespawned(NetworkPlayer player)
     {
-        ServerMatchmaker.Instance.UnregisterPlayer(player);
-    }
-
-    private static void HandleMatchmakingRequested(NetworkPlayer player)
-    {
-        ServerMatchmaker.Instance.AddToQueue(player);
-    }
-
-    private static void HandleMatchmakingCanceled(NetworkPlayer player)
-    {
-        ServerMatchmaker.Instance.RemoveFromQueue(player);
+        // Hiện tại không cần xử lý gì thêm khi Player thoát
     }
 
     private static void HandleSaveProgress(NetworkPlayer player, string sessionJson)
     {
         try
         {
-            Debug.Log("Save is disabled on Server. UnityWebRequest is now used on Client.");
-            // var data = Newtonsoft.Json.JsonConvert.DeserializeObject<GameSessionData>(sessionJson);
-            // DatabaseManager.Instance.SaveProgress(player.PlayerUsername.Value.ToString(), data);
+            Debug.LogWarning("[Server] Tính năng Save trên Server đã bị tắt! Client tự gọi Web API để save.");
         }
         catch (Exception e)
         {
