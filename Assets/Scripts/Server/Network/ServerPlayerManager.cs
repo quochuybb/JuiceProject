@@ -22,12 +22,10 @@ public static class ServerPlayerManager
             player.PlayerUsername.Value = username;
         }
         
-        // [MICROSERVICES] Không cần gọi Database hay Matchmaker ở đây nữa
-        // Mọi thứ đã được NodeJS xử lý!
     }
     private static void HandlePlayerDespawned(NetworkPlayer player)
     {
-        // Hiện tại không cần xử lý gì thêm khi Player thoát
+
     }
 
     private static void HandleSaveProgress(NetworkPlayer player, string sessionJson)

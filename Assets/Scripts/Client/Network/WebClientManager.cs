@@ -12,7 +12,7 @@ public class WebClientManager : MonoBehaviour
     [Header("API Config")]
     public string BaseUrl = "http://localhost:3000/api";
     
-    [Header("Tài khoản đang đăng nhập")]
+    [Header("Account Login and Token Login")]
     public string CurrentToken;
     public AccountUser CurrentUser;
 
@@ -26,82 +26,71 @@ public class WebClientManager : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
     }
-
-    /// <summary>
-    /// Đăng ký tài khoản
-    /// </summary>
+    
     public async Task<bool> RegisterAsync(string username, string password)
     {
         string url = $"{BaseUrl}/auth/register";
         string jsonPayload = JsonConvert.SerializeObject(new { username, password });
 
-        using (UnityWebRequest request = CreatePostRequest(url, jsonPayload))
+        using (UnityWebRequest request = UnityWebRequest.Post(url,jsonPayload,"application/json"))
         {
             var operation = request.SendWebRequest();
             while (!operation.isDone) await Task.Yield();
 
             if (request.result == UnityWebRequest.Result.Success)
             {
-                Debug.Log("[WebClient] Đăng ký thành công!");
+                Debug.Log("[WebClient] Register success!");
                 return true;
             }
             else
             {
-                Debug.LogError($"[WebClient] Đăng ký lỗi: {request.error} - {request.downloadHandler.text}");
+                Debug.LogError($"[WebClient] Register fail: {request.error} - {request.downloadHandler.text}");
                 return false;
             }
         }
     }
 
-    /// <summary>
-    /// Đăng nhập và nhận JWT Token
-    /// </summary>
     public async Task<bool> LoginAsync(string username, string password)
     {
         string url = $"{BaseUrl}/auth/login";
         string jsonPayload = JsonConvert.SerializeObject(new { username, password });
 
-        using (UnityWebRequest request = CreatePostRequest(url, jsonPayload))
+        using (UnityWebRequest request = UnityWebRequest.Post(url,jsonPayload,"application/json"))
         {
             var operation = request.SendWebRequest();
             while (!operation.isDone) await Task.Yield();
 
             if (request.result == UnityWebRequest.Result.Success)
             {
-                // Phân tích kết quả JSON trả về
                 var responseJson = request.downloadHandler.text;
                 var responseData = JsonConvert.DeserializeObject<LoginResponse>(responseJson);
 
-                // Lưu Token và Thông tin User
                 CurrentToken = responseData.token;
                 CurrentUser = responseData.user;
                 
-                Debug.Log($"[WebClient] Đăng nhập thành công! Lấy được Token. Vàng: {CurrentUser.gold}");
+                Debug.Log($"[WebClient] Login success!");
                 return true;
             }
             else
             {
-                Debug.LogError($"[WebClient] Đăng nhập lỗi: {request.error} - {request.downloadHandler.text}");
+                Debug.LogError($"[WebClient] Login fail: {request.error} - {request.downloadHandler.text}");
                 return false;
             }
         }
     }
 
-    /// <summary>
-    /// Lưu tiến trình lên Server
-    /// </summary>
     public async Task<bool> SaveProgressAsync(string sessionDataJSON)
     {
         if (string.IsNullOrEmpty(CurrentToken))
         {
-            Debug.LogError("[WebClient] Không có Token, không thể Save!");
+            Debug.LogError("[WebClient] No Token, cannot save progress!");
             return false;
         }
 
         string url = $"{BaseUrl}/player/save";
         string jsonPayload = JsonConvert.SerializeObject(new { session_data = sessionDataJSON });
 
-        using (UnityWebRequest request = CreatePostRequest(url, jsonPayload))
+        using (UnityWebRequest request = UnityWebRequest.Post(url,jsonPayload,"application/json"))
         {
             request.SetRequestHeader("Authorization", $"Bearer {CurrentToken}");
 
@@ -110,25 +99,22 @@ public class WebClientManager : MonoBehaviour
 
             if (request.result == UnityWebRequest.Result.Success)
             {
-                Debug.Log("[WebClient] Đã lưu tiến trình thành công lên Web API!");
+                Debug.Log("[WebClient] Save progress success!");
                 return true;
             }
             else
             {
-                Debug.LogError($"[WebClient] Lỗi lưu game: {request.error} - {request.downloadHandler.text}");
+                Debug.LogError($"[WebClient] Save progress fail: {request.error} - {request.downloadHandler.text}");
                 return false;
             }
         }
     }
 
-    /// <summary>
-    /// Tải lại tiến trình từ Server (Dùng khi đã có Token)
-    /// </summary>
     public async Task<bool> LoadProgressAsync()
     {
         if (string.IsNullOrEmpty(CurrentToken))
         {
-            Debug.LogError("[WebClient] Không có Token, yêu cầu Đăng nhập lại!");
+            Debug.LogError("[WebClient] No Token, cannot load progress!");
             return false;
         }
 
@@ -146,7 +132,6 @@ public class WebClientManager : MonoBehaviour
                 var responseJson = request.downloadHandler.text;
                 CurrentUser = JsonConvert.DeserializeObject<AccountUser>(responseJson);
                 
-                // Giải nén JSON vào GameSession
                 if (!string.IsNullOrEmpty(CurrentUser.session_data))
                 {
                     try
@@ -160,16 +145,16 @@ public class WebClientManager : MonoBehaviour
                     }
                     catch (Exception ex)
                     {
-                        Debug.LogError("[WebClient] Lỗi giải mã Session Data lúc LoadProgress: " + ex.Message);
+                        Debug.LogError("[WebClient] Error when unpacking session data: " + ex.Message);
                     }
                 }
 
-                Debug.Log($"[WebClient] Tải tiến trình thành công! Vàng hiện tại: {CurrentUser.gold}");
+                Debug.Log($"[WebClient] Load progress successfully! Current Gold: {CurrentUser.gold}");
                 return true;
             }
             else
             {
-                Debug.LogError($"[WebClient] Lỗi tải game: {request.error} - {request.downloadHandler.text}");
+                Debug.LogError($"[WebClient] Error when loading game: {request.error} - {request.downloadHandler.text}");
                 return false;
             }
         }
@@ -209,7 +194,6 @@ public class WebClientManager : MonoBehaviour
         }
     }
 
-    // --- MATCHMAKING API ---
     public async Task<bool> FindMatchAsync()
     {
         return await SendMatchCommandAsync("find");
@@ -220,7 +204,6 @@ public class WebClientManager : MonoBehaviour
         return await SendMatchCommandAsync("cancel");
     }
 
-    // --- Hàm tiện ích tạo UnityWebRequest POST ---
     private UnityWebRequest CreatePostRequest(string url, string jsonPayload)
     {
         UnityWebRequest request = new UnityWebRequest(url, "POST");
@@ -232,7 +215,6 @@ public class WebClientManager : MonoBehaviour
     }
 }
 
-// Cấu trúc Data để hứng cục JSON từ API Login trả về
 [Serializable]
 public class LoginResponse
 {
@@ -240,11 +222,10 @@ public class LoginResponse
     public AccountUser user;
 }
 
-// Cấu trúc Data hứng kết quả Matchmaking
 [Serializable]
 public class MatchStatusResponse
 {
-    public string status; // "none", "searching", "match_found"
+    public string status; 
     public string roomId;
     public string serverIp;
     public string serverPort;

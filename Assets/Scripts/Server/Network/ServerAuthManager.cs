@@ -34,15 +34,13 @@ public class ServerAuthManager : MonoBehaviour
 
     private void ApprovalCheck(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
     {
-        // 1. Mặc định là bị từ chối
         response.Approved = false;
         response.CreatePlayerObject = false;
 
-        // 2. Trích xuất Payload (chứa username:password) do Client gửi lên
         byte[] payload = request.Payload;
         if (payload == null || payload.Length == 0)
         {
-            Debug.LogWarning("[ServerAuth] Client kết nối mà không gửi thông tin đăng nhập.");
+            Debug.LogWarning("[ServerAuth] Client connect without info.");
             response.Reason = "Missing credentials.";
             return;
         }
@@ -52,7 +50,7 @@ public class ServerAuthManager : MonoBehaviour
         
         if (parts.Length < 2)
         {
-            Debug.LogWarning("[ServerAuth] Payload sai định dạng (Thiếu RoomId hoặc Token).");
+            Debug.LogWarning("[ServerAuth] Payload format is invalid (Missing RoomId or Token).");
             response.Reason = "Invalid Auth Payload Format.";
             return;
         }
@@ -60,22 +58,20 @@ public class ServerAuthManager : MonoBehaviour
         string jwtToken = parts[0];
         string roomId = parts[1];
 
-        // 3. Giải mã và Xác thực JWT Token
         if (JwtUtility.VerifyToken(jwtToken, out JwtPayload decodedPayload))
         {
             string username = decodedPayload.username;
 
-            // Đăng nhập thành công
             ClientUsernames[request.ClientNetworkId] = username;
-            ClientRoomIds[request.ClientNetworkId] = roomId; // Lưu lại RoomId
+            ClientRoomIds[request.ClientNetworkId] = roomId; 
             
-            Debug.Log($"[ServerAuth] Xác thực JWT thành công! Client {request.ClientNetworkId} ({username}) tham gia phòng: {roomId}");
+            Debug.Log($"[ServerAuth] JWT Auth successful! Client {request.ClientNetworkId} ({username}) joined room: {roomId}");
             response.Approved = true;
-            response.CreatePlayerObject = true; // Tạo GameObject cho người chơi
+            response.CreatePlayerObject = true; 
         }
         else
         {
-            Debug.LogWarning($"[ServerAuth] Từ chối kết nối từ {request.ClientNetworkId} - Token không hợp lệ.");
+            Debug.LogWarning($"[ServerAuth] Reject connection from {request.ClientNetworkId} - Invalid JWT Token.");
             response.Reason = "Invalid JWT Token.";
         }
     }

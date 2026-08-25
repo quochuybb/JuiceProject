@@ -50,9 +50,10 @@ public class ServerMatchManager : MonoBehaviour
     private void OnClientConnected(ulong clientId)
     {
         if (!NetworkManager.Singleton.IsServer) return;
-
+        Debug.Log($"[ServerMatchManager] Client {clientId} connected.");
         if (ServerAuthManager.ClientRoomIds.TryGetValue(clientId, out string roomId))
         {
+            Debug.Log($"[ServerMatchManager] Client {clientId} joined room {roomId}.");
             if (!pendingRooms.ContainsKey(roomId))
             {
                 pendingRooms[roomId] = new List<ulong>();
@@ -75,7 +76,7 @@ public class ServerMatchManager : MonoBehaviour
         ActiveRooms[roomId] = newRoom;
         pendingRooms.Remove(roomId);
 
-        Debug.Log($"[ServerMatchManager] BẮT ĐẦU TRẬN ĐẤU PHÒNG {roomId}!");
+        Debug.Log($"[ServerMatchManager] START GAME IN ROOM {roomId}!");
 
         var p1Obj = NetworkManager.Singleton.SpawnManager.GetPlayerNetworkObject(player1Id);
         var p2Obj = NetworkManager.Singleton.SpawnManager.GetPlayerNetworkObject(player2Id);
@@ -107,7 +108,6 @@ public class ServerMatchManager : MonoBehaviour
             
             if (ActiveRooms.ContainsKey(roomId))
             {
-                // TODO: Xử thua cho người chơi thoát game giữa chừng
                 ActiveRooms.Remove(roomId);
             }
         }

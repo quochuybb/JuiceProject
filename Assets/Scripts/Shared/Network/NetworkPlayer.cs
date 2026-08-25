@@ -6,22 +6,14 @@ public partial class NetworkPlayer : NetworkBehaviour
 {
     public static NetworkPlayer LocalInstance { get; private set; }
 
-    // Biến đồng bộ: Bất cứ khi nào Server đổi giá trị này, mọi Client sẽ thấy
     public NetworkVariable<int> PlayerMMR = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     
-    // Tên của người chơi (dùng kiểu chuỗi đặc biệt của Netcode)
     public NetworkVariable<Unity.Collections.FixedString32Bytes> PlayerUsername = new NetworkVariable<Unity.Collections.FixedString32Bytes>("", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
-    public bool IsInMatchmaking { get; private set; } = false;
-
-    // --- EVENTS CHO SERVER ---
     public static event Action<NetworkPlayer> OnServerPlayerSpawned;
     public static event Action<NetworkPlayer> OnServerPlayerDespawned;
-    public static event Action<NetworkPlayer> OnServerMatchmakingRequested;
-    public static event Action<NetworkPlayer> OnServerMatchmakingCanceled;
     public static event Action<NetworkPlayer, string> OnServerSaveProgressRequested;
 
-    // --- EVENTS CHO PVP LOBBY ---
     public static event Action<int> OnClientGameStarted;
     public static event Action<int, int> OnClientHPUpdated;
     public static event Action<bool, int> OnClientMatchEnded;
@@ -38,7 +30,7 @@ public partial class NetworkPlayer : NetworkBehaviour
         else if (IsOwner)
         {
             LocalInstance = this;
-            Debug.Log($"[Client] Tôi đã kết nối thành công với Username: {PlayerUsername.Value}");
+            Debug.Log($"[Client] Connected with Username: {PlayerUsername.Value}");
         }
     }
 
@@ -54,65 +46,12 @@ public partial class NetworkPlayer : NetworkBehaviour
         }
     }
 
-    // --- CÁC HÀM CHO NÚT BẤM UI (RANKING MODE) ---
-    
-    public void StartMatchmaking()
-    {
-        if (IsOwner)
-        {
-            Debug.Log("[Client] Gửi yêu cầu Tìm Trận lên Server...");
-            CmdFindMatchServerRpc();
-        }
-    }
-
-    public void CancelMatchmaking()
-    {
-        if (IsOwner)
-        {
-            Debug.Log("[Client] Hủy Tìm Trận.");
-            CmdCancelMatchServerRpc();
-        }
-    }
-
-    // ----------------------------------------------
-
-    [ServerRpc]
-    public void CmdFindMatchServerRpc()
-    {
-        if (IsInMatchmaking) return;
-        
-        Debug.Log($"[Server] Player {PlayerUsername.Value} đang tìm trận...");
-        IsInMatchmaking = true;
-        OnServerMatchmakingRequested?.Invoke(this);
-    }
-    
-    [ServerRpc]
-    public void CmdCancelMatchServerRpc()
-    {
-        if (!IsInMatchmaking) return;
-        
-        IsInMatchmaking = false;
-        OnServerMatchmakingCanceled?.Invoke(this);
-    }
-
-    // Server gọi hàm này để đẩy lệnh xuống 1 Client duy nhất (ví dụ Client 1)
-    [ClientRpc]
-    public void RpcMatchFoundClientRpc(string opponentName, int opponentMMR)
-    {
-        if (IsOwner)
-        {
-            Debug.Log($"[Client] ĐÃ TÌM THẤY TRẬN! Đối thủ: {opponentName} (MMR: {opponentMMR})");
-        }
-    }
-
-    // --- CÁC HÀM RPC DÀNH CHO PVP BATTLE ---
-
     [ClientRpc]
     public void RpcStartGameClientRpc(int boardSeed, ClientRpcParams clientRpcParams = default)
     {
         if (IsOwner)
         {
-            Debug.Log($"[Client] BẮT ĐẦU TRẬN ĐẤU! Board Seed: {boardSeed}");
+            Debug.Log($"[Client] START GAME! Board Seed: {boardSeed}");
             OnClientGameStarted?.Invoke(boardSeed);
         }
     }
@@ -120,8 +59,6 @@ public partial class NetworkPlayer : NetworkBehaviour
     [ServerRpc]
     public void CmdAttackServerRpc(int damageAmount)
     {
-        // Nhận lệnh chém từ Client, bắn Event ra ngoài để ServerMatchManager (ở project Server) bắt lấy
-        // Cách này giúp tránh lỗi tham chiếu vòng (Circular Dependency) giữa Shared Assembly và Server Assembly
         OnServerAttackReceived?.Invoke(OwnerClientId, damageAmount);
     }
 
@@ -143,20 +80,18 @@ public partial class NetworkPlayer : NetworkBehaviour
         }
     }
     
-    // Server gọi để báo lưu tiến trình PvE
     [ServerRpc]
     public void CmdSaveProgressServerRpc(string sessionJson)
     {
         OnServerSaveProgressRequested?.Invoke(this, sessionJson);
     }
     
-    // Server gọi để ném JSON tiến trình (Save file) về cho điện thoại ngay khi vừa đăng nhập xong
     [ClientRpc]
     public void RpcLoadSessionClientRpc(string sessionJson)
     {
         if (IsOwner)
         {
-            Debug.Log($"[Client] Nhận được dữ liệu Save từ Server. Đang giải nén...");
+            Debug.Log($"[Client] Received Save Data from Server. Unpacking...");
             var data = Newtonsoft.Json.JsonConvert.DeserializeObject<GameSessionData>(sessionJson);
             
             var allRecipesList = Resources.LoadAll<RecipeData>("ScriptObjects/Recipes");
@@ -168,7 +103,6 @@ public partial class NetworkPlayer : NetworkBehaviour
 
             data.UnpackToGameSession(allRecipesDictionary);
 
-            // Phục hồi ChapterData dựa trên CurrentChapterID
             if (!string.IsNullOrEmpty(GameSession.CurrentChapterID))
             {
                 var allChapters = Resources.LoadAll<ChapterData>("ScriptObjects");
@@ -185,20 +119,18 @@ public partial class NetworkPlayer : NetworkBehaviour
     }
 
 
-    // --- CÁC HÀM XỬ LÝ LƯU GAME TỪ PHÍA CLIENT ---
     
     public void SaveProgress()
     {
         if (!IsOwner) return;
 
-        Debug.Log("[Client] Bắt đầu gom dữ liệu GameSession để lưu lên Server...");
+        Debug.Log("[Client] Starting to pack GameSession Data to save to Server...");
         
         GameSessionData data = new GameSessionData();
         data.PackFromGameSession();
         
         string json = Newtonsoft.Json.JsonConvert.SerializeObject(data);
         
-        // Bắn dữ liệu lên Server
         CmdSaveProgressServerRpc(json);
     }
 
@@ -207,7 +139,7 @@ public partial class NetworkPlayer : NetworkBehaviour
         if (IsOwner)
         {
             SaveProgress();
-            Debug.Log("[Client] Đã gửi lệnh Lưu Game. Đang tắt ứng dụng...");
+            Debug.Log("[Client] Saved Game. Exiting...");
         }
         
         Application.Quit();

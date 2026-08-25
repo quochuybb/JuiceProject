@@ -37,10 +37,8 @@ public class MainMenuManager : MonoBehaviour
     private void Start()
     {
         coin.text = GameSession.currentCoin.ToString();
-        if (versusText != null) versusText.text = ""; // Trạng thái mặc định là rỗng
-
-        // Nếu người chơi đã có Token rồi (quay lại từ scene Game),
-        // bỏ qua màn hình SignIn và hiển thị thẳng Map Panel
+        if (versusText != null) versusText.text = "";
+        
         if (WebClientManager.Instance != null && !string.IsNullOrEmpty(WebClientManager.Instance.CurrentToken))
         {
             signInPanel.anchoredPosition = rightOffScreen;
@@ -49,7 +47,6 @@ public class MainMenuManager : MonoBehaviour
             shopPanel.anchoredPosition = rightOffScreen;
             mapPanel.anchoredPosition = centerPosition;
 
-            // Vẽ lại bản đồ Chapter đang chơi
             if (MapManager.Instance != null)
             {
                 MapManager.Instance.ReloadCurrentMap();
@@ -59,15 +56,11 @@ public class MainMenuManager : MonoBehaviour
 
     private void OnEnable()
     {
-        // Lót dép ngồi nghe: Nếu ConnectionManager hét lên "Thành công", lập tức chạy hàm OnSignInSuccess
-        ConnectionManager.OnLoginSuccess += OnSignInSuccess;
         GameSession.OnCoinChanged += UpdateCoinDisplay;
     }
 
     private void OnDisable()
     {
-        // Khi UI này bị tắt hoặc bị xóa, phải hủy đăng ký để tránh lỗi tràn RAM
-        ConnectionManager.OnLoginSuccess -= OnSignInSuccess;
         GameSession.OnCoinChanged -= UpdateCoinDisplay;
     }
 
@@ -103,43 +96,36 @@ public class MainMenuManager : MonoBehaviour
             password.text = "admin123";
         }
 
-        // Đợi Web API xử lý Đăng nhập
         bool isSuccess = await WebClientManager.Instance.LoginAsync(username.text, password.text);
         
-        // Nếu Đăng nhập thất bại (Có thể do chưa có tài khoản)
         if (!isSuccess)
         {
-            Debug.Log("[MainMenu] Đăng nhập thất bại, đang thử Tự động Đăng ký tài khoản mới...");
+            Debug.Log("[MainMenu] Login fail, Trying to register new account...");
             bool isRegisterSuccess = await WebClientManager.Instance.RegisterAsync(username.text, password.text);
             
             if (isRegisterSuccess)
             {
-                Debug.Log("[MainMenu] Đăng ký thành công! Tiến hành đăng nhập lại...");
-                // Đăng nhập lại lần nữa
+                Debug.Log("[MainMenu] Register succeess, Login again...");
                 isSuccess = await WebClientManager.Instance.LoginAsync(username.text, password.text);
             }
             else
             {
-                Debug.LogError("[MainMenu] Tự động đăng ký thất bại. Xin vui lòng kiểm tra lại mạng hoặc tài khoản.");
+                Debug.LogError("[MainMenu] Register fail,Please try again.");
                 return;
             }
         }
 
-        // Nếu API trả về true (Đăng nhập đúng)
         if (isSuccess) 
         {
-            // Cập nhật Vàng/Ngọc hiển thị trên UI từ dữ liệu mới lấy về
             GameSession.currentCoin = WebClientManager.Instance.CurrentUser.gold;
             UpdateCoinDisplay();
             UpdateEloDisplay();
 
-            // Phục hồi dữ liệu túi đồ (Inventory, Recipe, Map) từ JSON
             string sessionDataJson = WebClientManager.Instance.CurrentUser.session_data;
             if (!string.IsNullOrEmpty(sessionDataJson))
             {
                 try
                 {
-                    // Tải toàn bộ danh sách đồ trong game để tra cứu ID
                     RecipeData[] allRecipeDatas = UnityEngine.Resources.LoadAll<RecipeData>("ScriptObjects/Recipes");
                     System.Collections.Generic.Dictionary<int, RecipeData> recipeDict = new System.Collections.Generic.Dictionary<int, RecipeData>();
                     foreach (var r in allRecipeDatas)
@@ -147,29 +133,26 @@ public class MainMenuManager : MonoBehaviour
                         recipeDict[r.recipeID] = r;
                     }
 
-                    // Giải nén JSON vào GameSession
                     GameSessionData data = Newtonsoft.Json.JsonConvert.DeserializeObject<GameSessionData>(sessionDataJson);
                     data.UnpackToGameSession(recipeDict);
                     
-                    Debug.Log($"[MainMenu] Phục hồi túi đồ thành công! Túi đồ: {GameSession.inventoryList.Count} món, Đang mặc: {GameSession.recipeList.Count} món.");
+                    Debug.Log($"[MainMenu] Restore Inventory Success! Inventory: {GameSession.inventoryList.Count} items, Equipped: {GameSession.recipeList.Count} items.");
                 }
                 catch (System.Exception ex)
                 {
-                    Debug.LogError("[MainMenu] Lỗi giải mã Session Data: " + ex.Message);
+                    Debug.LogError("[MainMenu] Error parsing Session Data: " + ex.Message);
                 }
             }
 
-            // Trượt màn hình sang Main Menu
             OnSignInSuccess();
         }
     }
     public void OnSignInSuccess()
     {
-        Debug.Log("sign in success");
+        Debug.Log("Sign in success");
         if (SoundManager.Instance != null)
             SoundManager.Instance.PlayUIClick();
             
-        // Trượt Panel Đăng Nhập ra ngoài, Trượt Panel Sảnh (Main Menu) vào giữa
         SlidePanel(signInPanel, mainMenuPanel);
     }
     public void OnPlayChapterButton()
@@ -185,7 +168,6 @@ public class MainMenuManager : MonoBehaviour
             SoundManager.Instance.PlayUIClick();
         Debug.Log("Open Shop");
         
-        // Cập nhật lại giao diện của các nút mua đồ dựa trên Data mới nhất tải từ Server
         if (RecipeManager.instance != null)
         {
             RecipeManager.instance.RefreshAllRecipes();
@@ -260,7 +242,6 @@ public class MainMenuManager : MonoBehaviour
             if (versusText != null)
                 versusText.text = "Error connecting to server";
                 
-            // Chờ 2 giây rồi xóa chữ
             await System.Threading.Tasks.Task.Delay(2000);
             if (versusText != null)
                 versusText.text = "";
@@ -279,23 +260,19 @@ public class MainMenuManager : MonoBehaviour
             yield return new WaitUntil(() => task.IsCompleted);
 
             var response = task.Result;
-            
+            Debug.Log(response.status);
             if (response != null && response.status == "match_found")
             {
                 isMatched = true; 
                 Debug.Log($"[Matchmaking] YAY! Đã tìm thấy trận! Room ID: {response.roomId}");
                 
-                // Đổi chữ "Matching..." thành tên đối thủ
                 if (versusText != null)
                     versusText.text = $"{response.opponentName}";
 
-                // TRƯỢT SANG MÀN HÌNH ĐẤU (gameMatchPanel) TỪ MÀN HÌNH RANKING
                 SlidePanel(rankingPanel, gameMatchPanel);
 
-                // Chờ 2 giây để người chơi xem hoạt ảnh trượt và nhìn thấy tên đối thủ rồi mới kết nối
                 yield return new WaitForSeconds(2.0f);
 
-                // Kết nối vào Server Game bằng chuỗi Token + "|" + roomId
                 string authPayload = $"{WebClientManager.Instance.CurrentToken}|{response.roomId}";
                 ConnectionManager.Instance.StartClient(authPayload);
             }

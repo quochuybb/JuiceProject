@@ -43,14 +43,13 @@ public class PvPBoardManager : MonoBehaviour
 
     private void HandleGameStarted(int boardSeed)
     {
-        Debug.Log($"[PvPBoardManager] Đang tạo bàn cờ với Seed: {boardSeed}");
+        Debug.Log($"[PvPBoardManager] Generating PVP board with seed: {boardSeed}");
         
         UpdateHPUI(1000, 1000);
 
         if (winPanel != null) winPanel.SetActive(false);
         if (losePanel != null) losePanel.SetActive(false);
 
-        // Khởi tạo trạng thái Random dùng chung Seed cho cả 2 máy để sinh cờ giống hệt nhau
         Random.InitState(boardSeed);
         
         dataList = BoardGenerator.GenerateInitialBoard(1, COLUMNS);

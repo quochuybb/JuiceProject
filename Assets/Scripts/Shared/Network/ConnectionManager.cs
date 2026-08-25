@@ -10,9 +10,6 @@ public class ConnectionManager : MonoBehaviour
 {
     public static ConnectionManager Instance { get; private set; }
 
-    public static event Action OnLoginSuccess;
-    public static event Action<string> OnLoginFailed;
-
     [Header("Network Settings")]
     public string ServerIP = "127.0.0.1";
     public ushort ServerPort = 7777;
@@ -29,7 +26,6 @@ public class ConnectionManager : MonoBehaviour
 
     private void Start()
     {
-        // Lắng nghe sự kiện kết nối của Netcode
         NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
         NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnect;
     }
@@ -47,10 +43,8 @@ public class ConnectionManager : MonoBehaviour
     {
         if (clientId == NetworkManager.Singleton.LocalClientId)
         {
-            Debug.Log("[ConnectionManager] Đăng nhập thành công! Đã kết nối tới Server.");
+            Debug.Log("[ConnectionManager] Login success! Connected to server.");
             
-            // Cầm loa hét lên: "Đăng nhập thành công rồi!"
-            OnLoginSuccess?.Invoke();
         }
     }
 
@@ -58,19 +52,14 @@ public class ConnectionManager : MonoBehaviour
     {
         if (clientId == NetworkManager.Singleton.LocalClientId)
         {
-            // Lấy lý do ngắt kết nối (do Server Auth trả về hoặc do Timeout)
             string reason = NetworkManager.Singleton.DisconnectReason;
             if (string.IsNullOrEmpty(reason))
             {
-                reason = "Máy chủ không hoạt động hoặc không thể kết nối tới IP/Port.";
+                reason = "Server is offline or cannot connect to IP/Port.";
             }
 
-            Debug.LogError($"[ConnectionManager] Kết nối thất bại / Đăng nhập sai: {reason}");
+            Debug.LogError($"[ConnectionManager] Login failed / Wrong password: {reason}");
             
-            // Cầm loa hét lên: "Đăng nhập thất bại!" kèm theo lý do
-            OnLoginFailed?.Invoke(reason);
-            
-            // Đảm bảo dọn dẹp sạch sẽ trạng thái mạng
             Disconnect();
         }
     }
@@ -80,32 +69,18 @@ public class ConnectionManager : MonoBehaviour
         var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
         transport.SetConnectionData(ServerIP, ServerPort, "0.0.0.0");
         
-        // Bắt buộc bật tính năng Kiểm duyệt (Connection Approval) để chặn đăng nhập sai mật khẩu
         NetworkManager.Singleton.NetworkConfig.ConnectionApproval = true;
         
         Debug.Log($"[ConnectionManager] Starting Dedicated Server on port {ServerPort}...");
         NetworkManager.Singleton.StartServer();
     }
 
-    public void StartHost(string token)
-    {
-        var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
-        transport.SetConnectionData(ServerIP, ServerPort);
-        
-        NetworkManager.Singleton.NetworkConfig.ConnectionApproval = true;
-        
-        SetClientAuthData(token);
-
-        Debug.Log($"[ConnectionManager] Starting Host (Server + Client)...");
-        NetworkManager.Singleton.StartHost();
-    }
 
     public void StartClient(string token)
     {
         var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
         transport.SetConnectionData(ServerIP, ServerPort);
         
-        // Bắt buộc bật Kiểm duyệt ở cả Client để đồng bộ cấu hình (NetworkConfig) với Server
         NetworkManager.Singleton.NetworkConfig.ConnectionApproval = true;
         
         SetClientAuthData(token);

@@ -5,6 +5,7 @@ public static class BoardGenerator
 {
     public static List<CellData> GenerateInitialBoard(int stage, int columns)
     {
+        Debug.Log("Generating Board");
         int targetPairs;
         if (stage == 1)
             targetPairs = 3;
