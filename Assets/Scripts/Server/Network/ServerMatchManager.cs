@@ -129,15 +129,14 @@ public class ServerMatchManager : MonoBehaviour
             request.uploadHandler = new UploadHandlerRaw(bodyRaw);
             request.downloadHandler = new DownloadHandlerBuffer();
             request.SetRequestHeader("Content-Type", "application/json");
-
+            request.SetRequestHeader("x-server-secret", "juice_key_2026");
             yield return request.SendWebRequest();
 
             if (request.result == UnityWebRequest.Result.Success)
             {
-                Debug.Log($"[ServerMatchManager] Đã lưu kết quả thành công: {request.downloadHandler.text}");
+                Debug.Log($"[ServerMatchManager] Save result success: {request.downloadHandler.text}");
                 try
                 {
-                    // Lấy ra MMR mới trả về từ Backend
                     var jsonResponse = Newtonsoft.Json.Linq.JObject.Parse(request.downloadHandler.text);
                     int winnerMmr = (int)jsonResponse["data"]["winnerMmr"];
                     int loserMmr = (int)jsonResponse["data"]["loserMmr"];
@@ -146,13 +145,13 @@ public class ServerMatchManager : MonoBehaviour
                 }
                 catch (System.Exception e)
                 {
-                    Debug.LogError("[ServerMatchManager] Lỗi đọc JSON MMR: " + e.Message);
+                    Debug.LogError("[ServerMatchManager] Error parse json: " + e.Message);
                     onSuccess?.Invoke(0, 0);
                 }
             }
             else
             {
-                Debug.LogError($"[ServerMatchManager] Lỗi lưu kết quả: {request.error}");
+                Debug.LogError($"[ServerMatchManager] Error save result: {request.error}");
                 onSuccess?.Invoke(0, 0);
             }
         }
