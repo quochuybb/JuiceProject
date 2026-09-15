@@ -45,6 +45,7 @@ public class MapManager : MonoBehaviour
     {
         MainMenuManager.Instance.OnPlayChapterButton();
         
+        bool isNewSeed = false;
         if ((GameSession.CurrentChapterData == chapter || GameSession.CurrentChapterID == chapter.chapterID) && GameSession.CurrentMapSeed != 0)
         {
             currentSeed = GameSession.CurrentMapSeed;
@@ -54,10 +55,17 @@ public class MapManager : MonoBehaviour
             currentSeed = chapter.chapterID.GetHashCode() + UnityEngine.Random.Range(0, 1000);
             GameSession.CurrentMapSeed = currentSeed;
             GameSession.CompletedNodes.Clear(); 
+            isNewSeed = true;
         }
 
         currentChapterData = chapter;
         GameSession.CurrentChapterData = chapter;
+        GameSession.CurrentChapterID = chapter.chapterID;
+        
+        if (isNewSeed)
+        {
+            SaveMapSeedToBackend();
+        }
         GameSession.CurrentChapterID = chapter.chapterID;
         
         foreach (Transform child in mapContainerTransform)
@@ -302,6 +310,17 @@ public class MapManager : MonoBehaviour
             }
         }
         return items[items.Count - 1]; 
+    }
+
+    private void SaveMapSeedToBackend()
+    {
+        GameSessionData data = new GameSessionData();
+        data.PackFromGameSession();
+        string jsonPayload = Newtonsoft.Json.JsonConvert.SerializeObject(data);
+        if (WebClientManager.Instance != null)
+        {
+            _ = WebClientManager.Instance.SaveProgressAsync(jsonPayload);
+        }
     }
 
     private void ConnectLayers(List<MapNodeData> upperLayer, List<MapNodeData> lowerLayer, Random rng)

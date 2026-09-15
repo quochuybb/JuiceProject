@@ -76,7 +76,7 @@ public class ConnectionManager : MonoBehaviour
     }
 
 
-    public void StartClient(string token)
+    public void  StartClient(string token)
     {
         var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
         transport.SetConnectionData(ServerIP, ServerPort);

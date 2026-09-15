@@ -121,27 +121,14 @@ public class MainMenuManager : MonoBehaviour
             UpdateCoinDisplay();
             UpdateEloDisplay();
 
-            string sessionDataJson = WebClientManager.Instance.CurrentUser.session_data;
-            if (!string.IsNullOrEmpty(sessionDataJson))
+            bool isLoadSuccess = await WebClientManager.Instance.LoadProgressAsync();
+            if (isLoadSuccess)
             {
-                try
-                {
-                    RecipeData[] allRecipeDatas = UnityEngine.Resources.LoadAll<RecipeData>("ScriptObjects/Recipes");
-                    System.Collections.Generic.Dictionary<int, RecipeData> recipeDict = new System.Collections.Generic.Dictionary<int, RecipeData>();
-                    foreach (var r in allRecipeDatas)
-                    {
-                        recipeDict[r.recipeID] = r;
-                    }
-
-                    GameSessionData data = Newtonsoft.Json.JsonConvert.DeserializeObject<GameSessionData>(sessionDataJson);
-                    data.UnpackToGameSession(recipeDict);
-                    
-                    Debug.Log($"[MainMenu] Restore Inventory Success! Inventory: {GameSession.inventoryList.Count} items, Equipped: {GameSession.recipeList.Count} items.");
-                }
-                catch (System.Exception ex)
-                {
-                    Debug.LogError("[MainMenu] Error parsing Session Data: " + ex.Message);
-                }
+                Debug.Log($"[MainMenu] Restore Inventory Success! Inventory: {GameSession.inventoryList.Count} items, Equipped: {GameSession.recipeList.Count} items.");
+            }
+            else
+            {
+                Debug.LogWarning("[MainMenu] Load progress failed, but proceeding anyway.");
             }
 
             OnSignInSuccess();
@@ -264,7 +251,7 @@ public class MainMenuManager : MonoBehaviour
             if (response != null && response.status == "match_found")
             {
                 isMatched = true; 
-                Debug.Log($"[Matchmaking] YAY! Đã tìm thấy trận! Room ID: {response.roomId}");
+                Debug.Log($"[Matchmaking] Match found! Room ID: {response.roomId}");
                 
                 if (versusText != null)
                     versusText.text = $"{response.opponentName}";
@@ -278,7 +265,7 @@ public class MainMenuManager : MonoBehaviour
             }
             else
             {
-                Debug.Log("[Matchmaking] Vẫn đang tìm kiếm...");
+                Debug.Log("[Matchmaking] Finding Match...");
             }
         }
     }
@@ -289,6 +276,19 @@ public class MainMenuManager : MonoBehaviour
 
         Debug.Log("Open Settings");
     }
+    public void OnReturnToRankingFromMatch()
+    {
+        if (SoundManager.Instance != null)
+            SoundManager.Instance.PlayUIClick();
+
+        SlidePanel(gameMatchPanel, rankingPanel);
+
+        if (eloText != null && WebClientManager.Instance != null && WebClientManager.Instance.CurrentUser != null)
+        {
+            eloText.text = $"Elo Point: {WebClientManager.Instance.CurrentUser.mmr}";
+        }
+    }
+
     public void SlidePanel(RectTransform panelOld, RectTransform panelNew)
     {
         panelOld.DOAnchorPos(rightOffScreen, transitionDuration)
@@ -297,26 +297,34 @@ public class MainMenuManager : MonoBehaviour
         panelNew.DOAnchorPos(centerPosition, transitionDuration)
             .SetEase(easeType);
     } 
-    public void OnQuitButton()
+    public async void OnQuitButton()
     {
         if (SoundManager.Instance != null)
             SoundManager.Instance.PlayUIClick();
 
-        if (Unity.Netcode.NetworkManager.Singleton != null && Unity.Netcode.NetworkManager.Singleton.IsClient)
+        Debug.Log("[Client] Saving Progress before quitting...");
+        GameSessionData data = new GameSessionData();
+        data.PackFromGameSession();
+        string jsonPayload = Newtonsoft.Json.JsonConvert.SerializeObject(data);
+        
+        if (WebClientManager.Instance != null)
         {
-            if (Unity.Netcode.NetworkManager.Singleton.LocalClient != null && Unity.Netcode.NetworkManager.Singleton.LocalClient.PlayerObject != null)
-            {
-                var localPlayer = Unity.Netcode.NetworkManager.Singleton.LocalClient.PlayerObject.GetComponent<NetworkPlayer>();
-                if (localPlayer != null)
-                {
-                    localPlayer.SaveProgress();
-                    StartCoroutine(QuitAfterDelay(0.5f));
-                    return;
-                }
-            }
+            await WebClientManager.Instance.SaveProgressAsync(jsonPayload);
         }
         
         DoQuit();
+    }
+
+    private void OnApplicationQuit()
+    {
+        GameSessionData data = new GameSessionData();
+        data.PackFromGameSession();
+        string jsonPayload = Newtonsoft.Json.JsonConvert.SerializeObject(data);
+        
+        if (WebClientManager.Instance != null)
+        {
+            _ = WebClientManager.Instance.SaveProgressAsync(jsonPayload);
+        }
     }
 
     private System.Collections.IEnumerator QuitAfterDelay(float delay)

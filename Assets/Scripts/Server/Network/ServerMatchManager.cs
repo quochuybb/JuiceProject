@@ -47,6 +47,13 @@ public class ServerMatchManager : MonoBehaviour
         }
     }
 
+    private void HandleCheckMatching()
+    {
+        if (!NetworkManager.Singleton.IsServer) return;
+        
+        
+    }
+
     private void OnClientConnected(ulong clientId)
     {
         if (!NetworkManager.Singleton.IsServer) return;

@@ -1,0 +1,22 @@
+DANH SÁCH CÁC TÍNH NĂNG / FILE ĐANG BỊ THỪA HOẶC KHÔNG SỬ DỤNG (DEAD CODE)
+(Cần xem xét Refactor/Xóa bỏ để Clean Code)
+
+1. File AsyncHelper.cs
+- Vị trí: Shared/Network/AsyncHelper.cs
+- Tình trạng: Hoàn toàn không được sử dụng ở bất kỳ đâu trong toàn bộ dự án. 
+- Vấn đề kèm theo: Gây ra cảnh báo trên Console của Unity (Warning CS0168: The variable 'e' is declared but never used).
+
+2. File DatabaseManager.cs
+- Vị trí: Server/Database/DatabaseManager.cs
+- Tình trạng: Toàn bộ 180 dòng code trong file này đã bị comment out bằng khối /* ... */. File này hiện tại hoàn toàn vô dụng trên Game Server.
+- Lý do: Kiến trúc đã chuyển từ việc Game Server chọc trực tiếp vào DB sang việc dùng NodeJS Web API.
+
+3. File ServerShopManager.cs
+- Vị trí: Server/Shop/ServerShopManager.cs
+- Tình trạng: Hàm HandleBuyRecipeRequested (Xử lý khi người chơi mua đồ) đã bị comment toàn bộ logic xử lý chính. Hiện tại hàm này chỉ luôn luôn trả về false (Thất bại) cho mọi yêu cầu mua đồ từ Client.
+- Lý do: Chức năng cửa hàng (Shop) đã được dời hoàn toàn sang Web API (NodeJS). Game Server không còn nhiệm vụ quản lý tiền bạc và đồ đạc nữa.
+
+4. Hàm HandleSaveProgress trong ServerPlayerManager.cs
+- Vị trí: Server/Network/ServerPlayerManager.cs
+- Tình trạng: Hàm này chỉ chứa đúng một lệnh in ra Warning: "[Server] Tính năng Save trên Server đã bị tắt! Client tự gọi Web API để save."
+- Lý do: Server đã từ chối nhận các yêu cầu Save game từ Client để nhường lại quyền đó cho NodeJS Web API. Hàm này đang tồn tại dưới dạng một "Stub" thừa thãi.

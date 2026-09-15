@@ -118,8 +118,6 @@ public partial class NetworkPlayer : NetworkBehaviour
         }
     }
 
-
-    
     public void SaveProgress()
     {
         if (!IsOwner) return;
@@ -156,7 +154,6 @@ public partial class NetworkPlayer : NetworkBehaviour
             SaveProgress();
         }
     }
-
 
 }
 

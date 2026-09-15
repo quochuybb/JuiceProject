@@ -34,6 +34,7 @@ public class WebClientManager : MonoBehaviour
 
         using (UnityWebRequest request = UnityWebRequest.Post(url,jsonPayload,"application/json"))
         {
+            request.timeout = 15;
             var operation = request.SendWebRequest();
             while (!operation.isDone) await Task.Yield();
 
@@ -57,6 +58,7 @@ public class WebClientManager : MonoBehaviour
 
         using (UnityWebRequest request = UnityWebRequest.Post(url,jsonPayload,"application/json"))
         {
+            request.timeout = 15;
             var operation = request.SendWebRequest();
             while (!operation.isDone) await Task.Yield();
 
@@ -92,6 +94,7 @@ public class WebClientManager : MonoBehaviour
 
         using (UnityWebRequest request = UnityWebRequest.Post(url,jsonPayload,"application/json"))
         {
+            request.timeout = 15;
             request.SetRequestHeader("Authorization", $"Bearer {CurrentToken}");
 
             var operation = request.SendWebRequest();
@@ -122,6 +125,7 @@ public class WebClientManager : MonoBehaviour
 
         using (UnityWebRequest request = UnityWebRequest.Get(url))
         {
+            request.timeout = 15;
             request.SetRequestHeader("Authorization", $"Bearer {CurrentToken}");
 
             var operation = request.SendWebRequest();
@@ -142,6 +146,19 @@ public class WebClientManager : MonoBehaviour
 
                         GameSessionData data = JsonConvert.DeserializeObject<GameSessionData>(CurrentUser.session_data);
                         data.UnpackToGameSession(recipeDict);
+
+                        if (!string.IsNullOrEmpty(GameSession.CurrentChapterID))
+                        {
+                            var allChapters = UnityEngine.Resources.LoadAll<ChapterData>("ScriptObjects");
+                            foreach (var c in allChapters)
+                            {
+                                if (c != null && c.chapterID == GameSession.CurrentChapterID)
+                                {
+                                    GameSession.CurrentChapterData = c;
+                                    break;
+                                }
+                            }
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -167,6 +184,7 @@ public class WebClientManager : MonoBehaviour
         string url = $"{BaseUrl}/match/{endpoint}";
         using (UnityWebRequest request = CreatePostRequest(url, "{}"))
         {
+            request.timeout = 30;
             request.SetRequestHeader("Authorization", $"Bearer {CurrentToken}");
             var op = request.SendWebRequest();
             while (!op.isDone) await Task.Yield();
@@ -181,6 +199,7 @@ public class WebClientManager : MonoBehaviour
         string url = $"{BaseUrl}/match/status";
         using (UnityWebRequest request = UnityWebRequest.Get(url))
         {
+            request.timeout = 30;
             request.SetRequestHeader("Authorization", $"Bearer {CurrentToken}");
             var op = request.SendWebRequest();
             while (!op.isDone) await Task.Yield();

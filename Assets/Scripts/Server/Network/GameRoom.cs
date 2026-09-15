@@ -4,24 +4,31 @@ using UnityEngine;
 
 public class GameRoom
 {
+    private const int COLUMNS = 9;
+
     public string RoomId { get; private set; }
     public ulong Player1Id { get; private set; }
     public ulong Player2Id { get; private set; }
     
-    // Máu của 2 người chơi
     public int Player1HP { get; set; } = 1000;
     public int Player2HP { get; set; } = 1000;
     
     public int BoardSeed { get; private set; }
+    public List<CellData> Player1Board { get; private set; }
+    public List<CellData> Player2Board { get; private set; }
 
     public GameRoom(string roomId, ulong player1Id, ulong player2Id)
     {
         RoomId = roomId;
         Player1Id = player1Id;
         Player2Id = player2Id;
-        
+
         BoardSeed = Random.Range(1000, 999999);
-        Debug.Log($"[GameRoom] Đã tạo phòng {RoomId}. Seed: {BoardSeed}");
+        Random.InitState(BoardSeed);
+        Player1Board = BoardGenerator.GenerateInitialBoard(1, COLUMNS);
+        Random.InitState(BoardSeed);
+        Player2Board = BoardGenerator.GenerateInitialBoard(1, COLUMNS);
+        Debug.Log($"[GameRoom] Created Room {RoomId}. Seed: {BoardSeed}");
     }
 
     public void HandleAttack(ulong attackerId, int damage)
@@ -39,7 +46,6 @@ public class GameRoom
         
         Debug.Log($"[GameRoom] {RoomId} - HP: P1({Player1HP}) vs P2({Player2HP})");
 
-        // Gọi NetworkPlayer của Player1
         var player1Obj = NetworkManager.Singleton.SpawnManager.GetPlayerNetworkObject(Player1Id);
         if (player1Obj != null)
         {
@@ -48,18 +54,17 @@ public class GameRoom
             p1.RpcUpdateHPClientRpc(Player1HP, Player2HP, p1Params);
         }
 
-        // Gọi NetworkPlayer của Player2
         var player2Obj = NetworkManager.Singleton.SpawnManager.GetPlayerNetworkObject(Player2Id);
         if (player2Obj != null)
         {
             var p2 = player2Obj.GetComponent<NetworkPlayer>();
             ClientRpcParams p2Params = new ClientRpcParams { Send = new ClientRpcSendParams { TargetClientIds = new[] { Player2Id } } };
-            p2.RpcUpdateHPClientRpc(Player2HP, Player1HP, p2Params); // Gửi ngược lại để myHP luôn là HP của mình
+            p2.RpcUpdateHPClientRpc(Player2HP, Player1HP, p2Params); 
         }
 
         CheckWinCondition();
     }
-
+    
     private void CheckWinCondition()
     {
         if (Player1HP <= 0 || Player2HP <= 0)
@@ -72,10 +77,8 @@ public class GameRoom
             string winnerName = ServerAuthManager.GetUsernameForClient(winnerClientId);
             string loserName = ServerAuthManager.GetUsernameForClient(loserClientId);
 
-            // Báo cáo lên Node.js để lưu Database và cộng/trừ điểm MMR
             ServerMatchManager.Instance.SubmitMatchResult(winnerName, loserName, (winnerMmr, loserMmr) =>
             {
-                // Sau khi Node.js xử lý xong và trả về MMR mới, báo cho 2 điện thoại hiện UI kết quả
                 var player1Obj = NetworkManager.Singleton.SpawnManager.GetPlayerNetworkObject(Player1Id);
                 if (player1Obj != null)
                 {
