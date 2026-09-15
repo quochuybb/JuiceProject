@@ -43,6 +43,7 @@ public class RecipeManager : MonoBehaviour
     }
     public RecipeData GetMatchingRecipe(int val1, int val2)
     {
+        Debug.Log(val1 +":"+  val2);
         if (GameSession.recipeList == null || GameSession.recipeList.Count == 0)
             return null;
 

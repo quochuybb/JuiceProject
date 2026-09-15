@@ -209,13 +209,18 @@ public class PvPBoardManager : MonoBehaviour
 
     private bool IsMatch(CellData firstCell, CellData secondCell)
     {
-        bool isValidPair = (firstCell.value == secondCell.value) || (firstCell.value + secondCell.value == 10);
+        bool isValidPair = (firstCell.value == secondCell.value);
         
         // KIỂM TRA THÊM CÔNG THỨC (RECIPE)
         if (RecipeManager.instance != null)
         {
             RecipeData matchedRecipe = RecipeManager.instance.GetMatchingRecipe(firstCell.value, secondCell.value);
-            if (matchedRecipe != null) isValidPair = true;
+            if (matchedRecipe != null)
+            {
+                isValidPair = true;
+                Debug.Log(matchedRecipe.foodFirst + ":" + matchedRecipe.foodSecond + ":" + matchedRecipe.recipeName);
+
+            }
         }
 
         if (!isValidPair) return false;
