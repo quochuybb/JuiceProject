@@ -46,10 +46,28 @@ public class PvPBoardManager : MonoBehaviour
         NetworkPlayer.OnClientMatchEnded -= HandleMatchEnded;
     }
 
-    private void HandleGameStarted(int boardSeed)
+    private void HandleGameStarted(int boardSeed, int[] myRecipes, int[] oppRecipes)
     {
         countAdd = 5;
         Debug.Log($"[PvPBoardManager] Generating PVP board with seed: {boardSeed}");
+
+        GameSession.recipeList.Clear();
+        RecipeData[] allRecipes = Resources.LoadAll<RecipeData>("ScriptObjects/Recipes");
+        if (myRecipes != null)
+        {
+            foreach (int id in myRecipes)
+            {
+                foreach (var r in allRecipes)
+                {
+                    if (r.recipeID == id)
+                    {
+                        GameSession.recipeList.Add(r);
+                        break;
+                    }
+                }
+            }
+        }
+        Debug.Log($"[PvPBoardManager] Đã đồng bộ {GameSession.recipeList.Count} Recipes từ Server.");
         
         UpdateHPUI(1000, 1000);
 
@@ -181,6 +199,12 @@ public class PvPBoardManager : MonoBehaviour
         if (IsMatch(selectedCellUI.cell, clickedCellUI.cell))
         {
             HandleMatchSuccess(selectedCellUI, clickedCellUI);
+            
+            if (NetworkPlayer.LocalInstance != null)
+            {
+                NetworkPlayer.LocalInstance.CmdTryMatchServerRpc(selectedCellUI.cell.indexBoard, clickedCellUI.cell.indexBoard);
+            }
+
             selectedCellUI = null;
         }
         else
@@ -281,25 +305,6 @@ public class PvPBoardManager : MonoBehaviour
         if (SoundManager.Instance != null) SoundManager.Instance.PlayPairClear();
         cell1.OnMatchSuccess();
         cell2.OnMatchSuccess();
-        
-        int baseDamage = (cell1.cell.value + cell2.cell.value) * 2; 
-        int finalDamage = baseDamage;
-
-        if (RecipeManager.instance != null)
-        {
-            RecipeData matchedRecipe = RecipeManager.instance.GetMatchingRecipe(cell1.cell.value, cell2.cell.value);
-            if (matchedRecipe != null)
-            {
-                finalDamage = (baseDamage * 3) + (int)matchedRecipe.recipeCost;
-                Debug.Log($"[PvPBoardManager] Ghép thành công {matchedRecipe.recipeName}! Sát thương bạo kích: {finalDamage}");
-            }
-        }
-        
-        if (NetworkPlayer.LocalInstance != null)
-        {
-            Debug.Log($"[PvPBoardManager] Gửi lệnh tấn công lên Server! Sát thương: {finalDamage}");
-            NetworkPlayer.LocalInstance.CmdAttackServerRpc(finalDamage);
-        }
 
         Invoke(nameof(CheckAndClearEmptyRows), 0.5f);
     }
@@ -429,6 +434,11 @@ public class PvPBoardManager : MonoBehaviour
         { 
 
             return;
+        }
+
+        if (NetworkPlayer.LocalInstance != null)
+        {
+            NetworkPlayer.LocalInstance.CmdAddNumberServerRpc();
         }
 
         List<CellData> listCopyNumber = new List<CellData>();

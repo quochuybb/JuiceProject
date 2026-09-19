@@ -14,11 +14,12 @@ public partial class NetworkPlayer : NetworkBehaviour
     public static event Action<NetworkPlayer> OnServerPlayerDespawned;
     public static event Action<NetworkPlayer, string> OnServerSaveProgressRequested;
 
-    public static event Action<int> OnClientGameStarted;
+    public static event Action<int, int[], int[]> OnClientGameStarted;
     public static event Action<int, int> OnClientHPUpdated;
     public static event Action<bool, int> OnClientMatchEnded;
     public static event Action<ulong, int> OnServerAttackReceived;
-
+    public static event Action<int, int, ulong> OnServerMatchReceived;
+    public static event Action<ulong> OnServerAddNumberReceived;
     public override void OnNetworkSpawn()
     {
         DontDestroyOnLoad(gameObject);
@@ -47,12 +48,12 @@ public partial class NetworkPlayer : NetworkBehaviour
     }
 
     [ClientRpc]
-    public void RpcStartGameClientRpc(int boardSeed, ClientRpcParams clientRpcParams = default)
+    public void RpcStartGameClientRpc(int boardSeed, int[] myRecipes, int[] oppRecipes, ClientRpcParams clientRpcParams = default)
     {
         if (IsOwner)
         {
             Debug.Log($"[Client] START GAME! Board Seed: {boardSeed}");
-            OnClientGameStarted?.Invoke(boardSeed);
+            OnClientGameStarted?.Invoke(boardSeed, myRecipes, oppRecipes);
         }
     }
 
@@ -60,6 +61,18 @@ public partial class NetworkPlayer : NetworkBehaviour
     public void CmdAttackServerRpc(int damageAmount)
     {
         OnServerAttackReceived?.Invoke(OwnerClientId, damageAmount);
+    }
+
+    [ServerRpc]
+    public void CmdTryMatchServerRpc(int index1, int index2)
+    {
+        OnServerMatchReceived?.Invoke(index1, index2, OwnerClientId);
+    }
+
+    [ServerRpc]
+    public void CmdAddNumberServerRpc()
+    {
+        OnServerAddNumberReceived?.Invoke(OwnerClientId);
     }
 
     [ClientRpc]

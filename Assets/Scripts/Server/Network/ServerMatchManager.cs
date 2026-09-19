@@ -21,7 +21,8 @@ public class ServerMatchManager : MonoBehaviour
     {
         NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
         NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnect;
-        NetworkPlayer.OnServerAttackReceived += HandlePlayerAttack;
+        NetworkPlayer.OnServerMatchReceived += HandleCheckMatching;
+        NetworkPlayer.OnServerAddNumberReceived += HandleAddNumber;
     }
 
     private void OnDestroy()
@@ -31,27 +32,32 @@ public class ServerMatchManager : MonoBehaviour
             NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
             NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnect;
         }
-        NetworkPlayer.OnServerAttackReceived -= HandlePlayerAttack;
+        NetworkPlayer.OnServerMatchReceived -= HandleCheckMatching;
+        NetworkPlayer.OnServerAddNumberReceived -= HandleAddNumber;
     }
 
-    private void HandlePlayerAttack(ulong clientId, int damage)
+    private void HandleCheckMatching(int index1, int index2, ulong ownerClientId)
     {
         if (!NetworkManager.Singleton.IsServer) return;
-
-        if (ServerAuthManager.ClientRoomIds.TryGetValue(clientId, out string roomId))
+        if (ServerAuthManager.ClientRoomIds.TryGetValue(ownerClientId, out string roomId))
         {
             if (ActiveRooms.TryGetValue(roomId, out GameRoom room))
             {
-                room.HandleAttack(clientId, damage);
+                room.ProcessMatch(ownerClientId, index1, index2);
             }
         }
     }
 
-    private void HandleCheckMatching()
+    private void HandleAddNumber(ulong ownerClientId)
     {
         if (!NetworkManager.Singleton.IsServer) return;
-        
-        
+        if (ServerAuthManager.ClientRoomIds.TryGetValue(ownerClientId, out string roomId))
+        {
+            if (ActiveRooms.TryGetValue(roomId, out GameRoom room))
+            {
+                room.ServerAddNumber(ownerClientId);
+            }
+        }
     }
 
     private void OnClientConnected(ulong clientId)
@@ -83,7 +89,31 @@ public class ServerMatchManager : MonoBehaviour
         ActiveRooms[roomId] = newRoom;
         pendingRooms.Remove(roomId);
 
-        Debug.Log($"[ServerMatchManager] START GAME IN ROOM {roomId}!");
+        Debug.Log($"[ServerMatchManager] START GAME IN ROOM {roomId}! Fetching recipes...");
+
+        string p1Username = ServerAuthManager.GetUsernameForClient(player1Id);
+        string p2Username = ServerAuthManager.GetUsernameForClient(player2Id);
+
+        int completedRequests = 0;
+
+        FetchEquippedRecipes(p1Username, (recipeIDs) =>
+        {
+            newRoom.SetPlayerRecipes(player1Id, recipeIDs);
+            completedRequests++;
+            if (completedRequests >= 2) SendStartGame(newRoom, player1Id, player2Id);
+        });
+
+        FetchEquippedRecipes(p2Username, (recipeIDs) =>
+        {
+            newRoom.SetPlayerRecipes(player2Id, recipeIDs);
+            completedRequests++;
+            if (completedRequests >= 2) SendStartGame(newRoom, player1Id, player2Id);
+        });
+    }
+
+    private void SendStartGame(GameRoom room, ulong player1Id, ulong player2Id)
+    {
+        Debug.Log($"[ServerMatchManager] Recipes loaded! Sending StartGame for room {room.RoomId}");
 
         var p1Obj = NetworkManager.Singleton.SpawnManager.GetPlayerNetworkObject(player1Id);
         var p2Obj = NetworkManager.Singleton.SpawnManager.GetPlayerNetworkObject(player2Id);
@@ -93,11 +123,17 @@ public class ServerMatchManager : MonoBehaviour
             var p1 = p1Obj.GetComponent<NetworkPlayer>();
             var p2 = p2Obj.GetComponent<NetworkPlayer>();
 
+            int[] p1Recipes = new int[room.Player1Recipe.Count];
+            for (int i = 0; i < room.Player1Recipe.Count; i++) p1Recipes[i] = room.Player1Recipe[i].recipeID;
+
+            int[] p2Recipes = new int[room.Player2Recipe.Count];
+            for (int i = 0; i < room.Player2Recipe.Count; i++) p2Recipes[i] = room.Player2Recipe[i].recipeID;
+
             ClientRpcParams p1Params = new ClientRpcParams { Send = new ClientRpcSendParams { TargetClientIds = new[] { player1Id } } };
-            p1.RpcStartGameClientRpc(newRoom.BoardSeed, p1Params);
+            p1.RpcStartGameClientRpc(room.BoardSeed, p1Recipes, p2Recipes, p1Params);
 
             ClientRpcParams p2Params = new ClientRpcParams { Send = new ClientRpcSendParams { TargetClientIds = new[] { player2Id } } };
-            p2.RpcStartGameClientRpc(newRoom.BoardSeed, p2Params);
+            p2.RpcStartGameClientRpc(room.BoardSeed, p2Recipes, p1Recipes, p2Params);
         }
     }
 
@@ -160,6 +196,54 @@ public class ServerMatchManager : MonoBehaviour
             {
                 Debug.LogError($"[ServerMatchManager] Error save result: {request.error}");
                 onSuccess?.Invoke(0, 0);
+            }
+        }
+    }
+
+    public void FetchEquippedRecipes(string username, System.Action<List<int>> onComplete)
+    {
+        StartCoroutine(FetchEquippedRecipesRoutine(username, onComplete));
+    }
+
+    private IEnumerator FetchEquippedRecipesRoutine(string username, System.Action<List<int>> onComplete)
+    {
+        string url = $"http://localhost:3000/api/player/internal/{username}/equipped-recipes";
+
+        using (UnityWebRequest request = UnityWebRequest.Get(url))
+        {
+            request.SetRequestHeader("x-server-secret", "juice_key_2026");
+            request.timeout = 10;
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                try
+                {
+                    var json = Newtonsoft.Json.Linq.JObject.Parse(request.downloadHandler.text);
+                    var idArray = json["equippedRecipeIDs"] as Newtonsoft.Json.Linq.JArray;
+                    
+                    List<int> recipeIDs = new List<int>();
+                    if (idArray != null)
+                    {
+                        foreach (var id in idArray)
+                        {
+                            recipeIDs.Add((int)id);
+                        }
+                    }
+                    
+                    Debug.Log($"[ServerMatchManager] Fetched {recipeIDs.Count} recipes for {username}");
+                    onComplete?.Invoke(recipeIDs);
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"[ServerMatchManager] Parse recipe error: {e.Message}");
+                    onComplete?.Invoke(new List<int>());
+                }
+            }
+            else
+            {
+                Debug.LogError($"[ServerMatchManager] Fetch recipe failed: {request.error}");
+                onComplete?.Invoke(new List<int>());
             }
         }
     }
