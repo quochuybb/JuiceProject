@@ -13,6 +13,12 @@ public class GameRoom
     
     public int Player1HP { get; set; } = 1000;
     public int Player2HP { get; set; } = 1000;
+
+    public int Player1Shield { get; set; } = 0;
+    public int Player2Shield { get; set; } = 0;
+
+    public int Player1Mana { get; set; } = 0;
+    public int Player2Mana { get; set; } = 0;
     
     public int BoardSeed { get; private set; }
     public List<CellData> Player1Board { get; private set; }
